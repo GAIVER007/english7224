@@ -30,7 +30,7 @@ function Weekly() {
     return ws.map((w, i) => {
       const others = shuffle(all.filter((x) => x.id !== w.id)).slice(0, 3);
       if (i % 3 === 0) return { area: "Vocabulary", prompt: `Перевод: «${w.en}»`, options: shuffle([w.ru, ...others.map((o) => o.ru)]), answer: w.ru, wordId: w.id };
-      if (i % 3 === 1) { const p = w.phrases[0]; return { area: "Phrases", prompt: `Как сказать: «${p.ru}»`, options: shuffle([p.en, ...others.map((o) => o.phrases[0].en)]), answer: p.en, wordId: w.id }; }
+      if (i % 3 === 1) { const p = w.phrases[0]!; return { area: "Phrases", prompt: `Как сказать: «${p.ru}»`, options: shuffle([p.en, ...others.map((o) => o.phrases[0]!.en)]), answer: p.en, wordId: w.id }; }
       return { area: "Listening", prompt: "Что вы услышали?", audio: w.example, options: shuffle([w.example, ...others.map((o) => o.example)]), answer: w.example, wordId: w.id };
     });
   }, [ready]);
@@ -64,7 +64,7 @@ function Weekly() {
     );
   }
 
-  const q = questions[i];
+  const q = questions[i]!;
   const choose = (o: string) => {
     const ok = o === q.answer;
     setPicked(o);

@@ -22,7 +22,7 @@ function Quiz({ words, pool, onDone, onAnswer }: { words: Word[]; pool: Word[]; 
   const [i, setI] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   if (qs.length === 0) return <div className="text-center"><p className="text-muted-foreground">Пока нечего повторять — это первый урок.</p><button className="btn-primary mt-6" onClick={onDone}>Дальше</button></div>;
-  const q = qs[i];
+  const q = qs[i]!;
   return (
     <div>
       <p className="text-sm text-muted-foreground">{i + 1} / {qs.length}</p>
@@ -42,7 +42,7 @@ function Speaking({ items, onDone }: { items: { prompt: string; target: string }
   const [i, setI] = useState(0);
   const [heard, setHeard] = useState("");
   const [listening, setListening] = useState(false);
-  const it = items[i];
+  const it = items[i]!;
   const Rec = typeof window !== "undefined" ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z' ]/g, "").trim();
   const ok = heard && norm(heard).includes(norm(it.target).split(" ").slice(-2).join(" "));
@@ -71,7 +71,7 @@ function Speaking({ items, onDone }: { items: { prompt: string; target: string }
 function LessonPage() {
   const { state, update, ready } = useAppState();
   const nav = useNavigate();
-  const lesson = lessons[(state.day - 1) % lessons.length];
+  const lesson = lessons[(state.day - 1) % lessons.length]!;
   const firstOpen = STEPS.find((s) => !state.steps[`${state.day}:${s}`]) ?? "review";
   const [step, setStep] = useState<Step | null>(null);
   const [wi, setWi] = useState(0);
@@ -86,11 +86,11 @@ function LessonPage() {
   const complete = () => {
     const idx = STEPS.indexOf(cur);
     update((s) => touchStreak({ ...s, xp: s.xp + 10, steps: { ...s.steps, [`${s.day}:${cur}`]: true } }));
-    if (idx + 1 < STEPS.length) { setStep(STEPS[idx + 1]); setWi(0); }
+    if (idx + 1 < STEPS.length) { setStep(STEPS[idx + 1]!); setWi(0); }
     else { update((s) => ({ ...s, day: s.day + 1 })); nav({ to: "/" }); }
   };
 
-  const w = lesson.words[wi];
+  const w = lesson.words[wi]!;
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
