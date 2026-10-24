@@ -4,7 +4,7 @@ import { levels, placementQuestions, type Level } from "@/lib/content";
 import { useAppState } from "@/lib/store";
 
 export const Route = createFileRoute("/placement")({
-  validateSearch: (s: Record<string, unknown>) => ({ choose: s.choose === true || s.choose === "true" ? true : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({ choose: s["choose"] === true || s["choose"] === "true" ? true : undefined }),
   head: () => ({
     meta: [
       { title: "Тест уровня — SpeakUp" },
@@ -62,7 +62,7 @@ function Placement() {
     );
   }
 
-  const q = placementQuestions[i];
+  const q = placementQuestions[i]!;
   const answer = (idx: number) => {
     const next = idx === q.answer ? [...correct, q.level] : correct;
     setCorrect(next);

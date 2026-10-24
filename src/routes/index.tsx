@@ -25,14 +25,14 @@ function Home() {
         <h1 className="text-5xl font-semibold leading-tight md:text-6xl">Не учите слова.<br />Учитесь <em className="text-primary">говорить</em>.</h1>
         <p className="mt-6 text-lg text-muted-foreground">Слово → фраза → ситуация → диалог → практика → повторение. 20 минут в день.</p>
         <div className="mt-10 flex flex-wrap gap-3">
-          <Link to="/placement" className="btn-primary">Пройти тест уровня</Link>
+          <Link to="/placement" search={{ choose: undefined }} className="btn-primary">Пройти тест уровня</Link>
           <Link to="/placement" search={{ choose: true }} className="btn-ghost">Выбрать уровень сам</Link>
         </div>
       </main>
     );
   }
 
-  const lesson = lessons[(state.day - 1) % lessons.length];
+  const lesson = lessons[(state.day - 1) % lessons.length]!;
   const done = STEPS.filter((s) => state.steps[`${state.day}:${s}`]).length;
   const pct = Math.round((done / STEPS.length) * 100);
   const due = Object.values(state.cards).filter((c) => c.due <= Date.now()).length;

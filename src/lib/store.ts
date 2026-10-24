@@ -25,7 +25,7 @@ export function review(card: CardState | undefined, correct: boolean, now = Date
   const box = correct ? Math.min(c.box + 1, INTERVALS.length - 1) : 0;
   return {
     box,
-    due: now + INTERVALS[box] * 86400000,
+    due: now + INTERVALS[box]! * 86400000,
     correct: c.correct + (correct ? 1 : 0),
     wrong: c.wrong + (correct ? 0 : 1),
   };
