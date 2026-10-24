@@ -23,6 +23,7 @@ import {
 import { canOpenStep, completeStep, dueWords, studiedWords, wordPool } from "@/lib/learning";
 import { WordQuiz } from "@/components/WordQuiz";
 import { SpeakingPractice } from "@/components/SpeakingPractice";
+import { mistakeWords } from "@/lib/mistakes";
 
 export const Route = createFileRoute("/lesson")({
   validateSearch: (
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/lesson")({
   ): {
     review?: boolean | undefined;
     recall?: boolean | undefined;
+    mistakes?: boolean | undefined;
     module?: number | undefined;
     practice?: number | undefined;
   } => ({
@@ -46,6 +48,7 @@ export const Route = createFileRoute("/lesson")({
         ? Number(search["practice"])
         : undefined,
     recall: search["recall"] === true || search["recall"] === "true" ? true : undefined,
+    mistakes: search["mistakes"] === true || search["mistakes"] === "true" ? true : undefined,
     review: search["review"] === true || search["review"] === "true" ? true : undefined,
   }),
   head: () => ({
@@ -64,7 +67,13 @@ export const Route = createFileRoute("/lesson")({
 
 function LessonPage() {
   const { state, update, ready } = useAppState();
-  const { review: reviewOnly, recall: recallOnly, module: moduleId, practice } = Route.useSearch();
+  const {
+    review: reviewOnly,
+    recall: recallOnly,
+    module: moduleId,
+    practice,
+    mistakes,
+  } = Route.useSearch();
   if (!ready)
     return (
       <main className="p-8" role="status">
@@ -80,7 +89,8 @@ function LessonPage() {
         </Link>
       </main>
     );
-  if (recallOnly) return <RecallSession state={state} update={update} />;
+  if (mistakes) return <RecallSession key="mistakes" state={state} update={update} mistakes />;
+  if (recallOnly) return <RecallSession key="recall" state={state} update={update} />;
   if (reviewOnly) return <ReviewSession state={state} update={update} />;
   if (practice && practice < state.day)
     return <RevisionSession key={practice} day={practice} state={state} update={update} />;
@@ -357,24 +367,46 @@ function LessonSession({ state, update }: SessionProps) {
   );
 }
 
-function RecallSession({ state, update }: SessionProps) {
-  const [words] = useState(() => studiedWords(state));
+function RecallSession({ state, update, mistakes = false }: SessionProps & { mistakes?: boolean }) {
+  const [words] = useState(() => (mistakes ? mistakeWords(state) : studiedWords(state)));
   const nav = useNavigate();
   return (
     <main className="app-shell focus-shell">
-      <TrainingHeader title="Вызов памяти" detail="Без вариантов. Только ты и твоя память." />
+      <TrainingHeader
+        title={mistakes ? "Работа над ошибками" : "Вызов памяти"}
+        detail="Без вариантов. Только ты и твоя память."
+      />
+      {mistakes && (
+        <p className="subcopy mb-4">
+          До пяти изученных слов, которые пока трудно вспомнить. Ошибки вернутся в конце тренировки.
+          Для закрепления нужны успешные ответы в следующих занятиях.
+        </p>
+      )}
       <section className="lesson-stage">
-        <RecallPractice
-          words={words}
-          onDone={() => void nav({ to: "/" })}
-          onAnswer={(id, correct) =>
-            update((s) =>
-              recordPractice(
-                touchStreak({ ...s, cards: { ...s.cards, [id]: review(s.cards[id], correct) } }),
-              ),
-            )
-          }
-        />
+        {mistakes && words.length === 0 ? (
+          <div className="text-center">
+            <h1 className="text-2xl font-bold">Сейчас слабых слов нет</h1>
+            <p className="subcopy mt-3">
+              Продолжай миссии и плановое повторение. Здесь появятся слова, с которыми возникнут
+              сложности.
+            </p>
+            <Link to="/" className="btn-primary mt-5">
+              На главную
+            </Link>
+          </div>
+        ) : (
+          <RecallPractice
+            words={words}
+            onDone={() => void nav({ to: "/" })}
+            onAnswer={(id, correct) =>
+              update((s) =>
+                recordPractice(
+                  touchStreak({ ...s, cards: { ...s.cards, [id]: review(s.cards[id], correct) } }),
+                ),
+              )
+            }
+          />
+        )}
       </section>
     </main>
   );

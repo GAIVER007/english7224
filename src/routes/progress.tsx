@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ProgressBackup } from "@/components/ProgressBackup";
 import { PersonalRating } from "@/components/PersonalRating";
+import { mistakeWords } from "@/lib/mistakes";
 import { lessons } from "@/lib/content";
 import { courseModules, moduleExamKey } from "@/lib/curriculum";
 import { AREA_LABELS, type Area } from "@/lib/exam";
@@ -41,10 +42,7 @@ function Progress() {
   const cards = Object.entries(state.cards);
   const learned = cards.filter(([, card]) => card.box >= 2).length;
   const allWords = lessons.flatMap((lesson) => lesson.words);
-  const weak = cards
-    .filter(([, card]) => card.wrong > 0)
-    .sort((a, b) => b[1].wrong - a[1].wrong)
-    .slice(0, 6);
+  const weak = mistakeWords(state).map((word) => [word.id, state.cards[word.id]!] as const);
   const rank = learnerRank(state.xp);
   const week = weeklyActivity(state);
   const peak = Math.max(5, ...week.map((day) => day.count));
@@ -224,6 +222,11 @@ function Progress() {
         <Link to="/lesson" search={{ review: true }} className="btn-ghost mt-5 w-full">
           Повторить слова ({dueWords(state).length}) <ArrowRight size={16} aria-hidden="true" />
         </Link>
+        {weak.length > 0 && (
+          <Link to="/lesson" search={{ mistakes: true }} className="btn-primary mt-3 w-full">
+            Разобрать ошибки ({weak.length}) <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+        )}
       </section>
       <SectionHeading title="Последняя проверка" />
       <section className="card-soft p-5">
