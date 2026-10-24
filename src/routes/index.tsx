@@ -78,7 +78,7 @@ function Home() {
   const due = dueWords(state).length;
   const studied = studiedWords(state).length;
   return (
-    <main className="app-shell">
+    <main className="app-shell home-shell">
       <header className="topbar">
         <Brand />
         <div className="status-pills">
@@ -92,10 +92,12 @@ function Home() {
           </span>
         </div>
       </header>
-      <p className="eyebrow">Твой английский, твой ритм</p>
-      <h1 className="page-title">Практика, которая остаётся с тобой.</h1>
-      <WeeklyRhythm state={state} />
+      <div className="home-intro">
+        <h1>Сегодня</h1>
+        <p>Ещё один шаг к свободному английскому.</p>
+      </div>
       <StudyPlan state={state} />
+      <WeeklyRhythm state={state} />
       <section id="practice" className="scroll-mt-6">
         <SectionHeading title="Практика" aside={<span>Выбери навык</span>} />
         <div className="practice-grid">

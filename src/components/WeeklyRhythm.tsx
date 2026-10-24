@@ -9,10 +9,18 @@ export function WeeklyRhythm({ state }: { state: AppState }) {
   const nextBadge = earnedBadges(state).find((badge) => !badge.earned);
   return (
     <section className="weekly-rhythm" aria-label="Твоя неделя практики">
-      <h2>{balance.skills.length === 4 ? "Разносторонняя неделя" : "Каждый день понемногу"}</h2>
-      <p>
-        Дней с практикой за последнюю неделю: <strong>{balance.activeDays}</strong>
-      </p>
+      <div className="rhythm-heading">
+        <h2>{balance.skills.length === 4 ? "Разносторонняя неделя" : "Твой ритм"}</h2>
+        <span>
+          {balance.activeDays}{" "}
+          {balance.activeDays === 1
+            ? "день"
+            : balance.activeDays < 5 && balance.activeDays > 0
+              ? "дня"
+              : "дней"}{" "}
+          с практикой
+        </span>
+      </div>
       <div className="rhythm-days">
         {balance.days.map((day) => (
           <div
