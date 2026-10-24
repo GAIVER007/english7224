@@ -277,6 +277,16 @@ function Home() {
             </span>
           </Link>
         </div>
+        <Link to="/lesson" search={{ free: true }} className="course-item mt-3">
+          <span className="course-icon">
+            <PencilLine size={24} aria-hidden="true" />
+          </span>
+          <div>
+            <h3>Свободный тренажёр</h3>
+            <p>Собирай предложения и тренируй времена</p>
+          </div>
+          <ArrowRight size={18} aria-hidden="true" />
+        </Link>
         <Link to="/lesson" search={{ training: true }} className="course-item mt-3">
           <span className="course-icon">
             <Languages size={24} aria-hidden="true" />

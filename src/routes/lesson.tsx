@@ -25,6 +25,8 @@ import { WordQuiz } from "@/components/WordQuiz";
 import { SpeakingPractice } from "@/components/SpeakingPractice";
 import { mistakeWords } from "@/lib/mistakes";
 import { SkillPractice } from "@/components/SkillPractice";
+import { FreeTrainer } from "@/components/FreeTrainer";
+import { appendGrammarResult } from "@/lib/free-trainer";
 
 export const Route = createFileRoute("/lesson")({
   validateSearch: (
@@ -34,9 +36,11 @@ export const Route = createFileRoute("/lesson")({
     recall?: boolean | undefined;
     mistakes?: boolean | undefined;
     training?: boolean | undefined;
+    free?: boolean | undefined;
     module?: number | undefined;
     practice?: number | undefined;
   } => ({
+    free: search["free"] === true || search["free"] === "true" ? true : undefined,
     training: search["training"] === true || search["training"] === "true" ? true : undefined,
     module:
       Number.isInteger(Number(search["module"])) &&
@@ -77,6 +81,7 @@ function LessonPage() {
     practice,
     mistakes,
     training,
+    free,
   } = Route.useSearch();
   if (!ready)
     return (
@@ -91,6 +96,22 @@ function LessonPage() {
         <Link to="/placement" search={{ choose: true }} className="btn-primary mt-6">
           Выбрать уровень
         </Link>
+      </main>
+    );
+  if (free)
+    return (
+      <main className="app-shell focus-shell">
+        <TrainingHeader title="Свободная практика" detail="Базовая грамматика без спешки" />
+        <FreeTrainer
+          history={state.grammarHistory ?? []}
+          onAnswer={(correct) =>
+            update((s) => ({
+              ...s,
+              grammarHistory: appendGrammarResult(s.grammarHistory ?? [], correct),
+            }))
+          }
+          onComplete={() => update((s) => recordPractice(touchStreak(s)))}
+        />
       </main>
     );
   if (training) return <SkillSession state={state} update={update} />;

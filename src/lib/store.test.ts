@@ -17,6 +17,17 @@ afterEach(() => {
 });
 
 describe("shared app state", () => {
+  it("restores trainer history and rejects oversized or non-boolean history", () => {
+    const state = { ...createInitialState(), grammarHistory: [true, false, true] };
+    expect(() => restoreAppState(state)).not.toThrow();
+    expect(JSON.parse(localStorage.getItem("speakup-state-v1")!).grammarHistory).toEqual([
+      true,
+      false,
+      true,
+    ]);
+    expect(() => restoreAppState({ ...state, grammarHistory: Array(101).fill(true) })).toThrow();
+    expect(() => restoreAppState({ ...state, grammarHistory: ["true"] })).toThrow();
+  });
   it("hydrates persisted progress for a newly mounted consumer", async () => {
     localStorage.setItem(
       "speakup-state-v1",
@@ -132,6 +143,7 @@ describe("shared app state", () => {
       activity: {},
       earnedBadgeIds: ["first-lesson"],
       examResults: {},
+      grammarHistory: [],
     });
     expect(hook.result.current.storageError).toBeNull();
   });

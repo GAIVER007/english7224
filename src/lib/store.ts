@@ -40,6 +40,7 @@ export interface AppState {
   earnedBadgeIds?: BadgeId[];
   weeklyResult?: WeeklyResult;
   examResults?: Record<string, ExamResult>;
+  grammarHistory?: boolean[];
 }
 
 const KEY = "speakup-state-v1";
@@ -58,6 +59,7 @@ export function createInitialState(): AppState {
     activity: {},
     earnedBadgeIds: [],
     examResults: {},
+    grammarHistory: [],
   };
 }
 
@@ -139,8 +141,15 @@ const fieldSchemas = {
   activity: z.record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/), nonNegativeInteger),
   earnedBadgeIds: z.array(z.enum(BADGE_IDS)),
   examResults: examResultsSchema,
+  grammarHistory: z.array(z.boolean()).max(100),
 } satisfies Record<keyof Omit<AppState, "weeklyResult">, z.ZodTypeAny>;
-const migratedDefaultFields = new Set(["dailyGoal", "activity", "earnedBadgeIds", "examResults"]);
+const migratedDefaultFields = new Set([
+  "dailyGoal",
+  "activity",
+  "earnedBadgeIds",
+  "examResults",
+  "grammarHistory",
+]);
 
 interface StoreSnapshot {
   state: AppState;
