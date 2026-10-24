@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { CoursePath } from "@/components/CoursePath";
 import { lessons } from "@/lib/content";
-import { CoachBridge } from "@/components/CoachBridge";
 import { StudyPlan } from "@/components/StudyPlan";
 import { currentStreak, dueWords, studiedWords } from "@/lib/learning";
 import { WeeklyRhythm } from "@/components/WeeklyRhythm";
@@ -167,7 +166,6 @@ function Home() {
           </Link>
         </div>
       </section>
-      <CoachBridge state={state} />
       <details className="course-disclosure">
         <summary>
           Курс · {Math.min(state.day - 1, lessons.length)} из {lessons.length} миссий
