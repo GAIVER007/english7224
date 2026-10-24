@@ -1,91 +1,227 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { lessons } from "@/lib/content";
-import { review, speak, touchStreak, useAppState } from "@/lib/store";
+import { useEffect, useRef, useState } from "react";
+import { review, speak, touchStreak, useAppState, type AppState } from "@/lib/store";
+import { studiedWords } from "@/lib/learning";
+import { AREA_LABELS, createExam, replaceAudioQuestion, type Area } from "@/lib/exam";
 
 export const Route = createFileRoute("/weekly")({
   head: () => ({
     meta: [
-      { title: "Еженедельный экзамен — SpeakUp" },
-      { name: "description", content: "Проверка слов, фраз и аудирования за неделю с разбором слабых мест." },
-      { property: "og:title", content: "Еженедельный экзамен — SpeakUp" },
-      { property: "og:description", content: "Слова, фразы, listening — и что подтянуть." },
+      { title: "Проверка изученного — SpeakUp" },
+      {
+        name: "description",
+        content: "Проверка изученных слов, фраз и аудирования с разбором ошибок.",
+      },
     ],
   }),
   component: Weekly,
 });
 
-type Area = "Vocabulary" | "Phrases" | "Listening";
-interface Q { area: Area; prompt: string; audio?: string; options: string[]; answer: string; wordId: string }
-
-const shuffle = <T,>(a: T[]) => [...a].sort(() => Math.random() - 0.5);
-
 function Weekly() {
   const { state, update, ready } = useAppState();
-  const studied = lessons.slice(0, Math.max(1, state.day - 1)).flatMap((l) => l.words);
-  const questions = useMemo<Q[]>(() => {
-    if (!ready) return [];
-    const ws = shuffle(studied).slice(0, 9);
-    const all = lessons.flatMap((l) => l.words);
-    return ws.map((w, i) => {
-      const others = shuffle(all.filter((x) => x.id !== w.id)).slice(0, 3);
-      if (i % 3 === 0) return { area: "Vocabulary", prompt: `Перевод: «${w.en}»`, options: shuffle([w.ru, ...others.map((o) => o.ru)]), answer: w.ru, wordId: w.id };
-      if (i % 3 === 1) { const p = w.phrases[0]!; return { area: "Phrases", prompt: `Как сказать: «${p.ru}»`, options: shuffle([p.en, ...others.map((o) => o.phrases[0]!.en)]), answer: p.en, wordId: w.id }; }
-      return { area: "Listening", prompt: "Что вы услышали?", audio: w.example, options: shuffle([w.example, ...others.map((o) => o.example)]), answer: w.example, wordId: w.id };
-    });
-  }, [ready]);
-  const [i, setI] = useState(0);
-  const [score, setScore] = useState<Record<Area, [number, number]>>({ Vocabulary: [0, 0], Phrases: [0, 0], Listening: [0, 0] });
-  const [picked, setPicked] = useState<string | null>(null);
-  if (!ready || questions.length === 0) return null;
+  if (!ready)
+    return (
+      <main className="p-8" role="status">
+        Готовим проверку…
+      </main>
+    );
+  if (!state.level || studiedWords(state).length === 0)
+    return (
+      <main className="mx-auto max-w-xl px-6 py-16">
+        <h1 className="text-3xl">Сначала изучите новые слова</h1>
+        <p className="mt-4 text-muted-foreground">
+          В проверку попадёт только материал, с которым вы уже работали.
+        </p>
+        <Link to="/" className="btn-primary mt-6">
+          К урокам
+        </Link>
+      </main>
+    );
+  return <ExamSession state={state} update={update} />;
+}
 
-  if (i >= questions.length) {
-    const total = Object.values(score).reduce((a, [c]) => a + c, 0);
-    const pct = Math.round((total / questions.length) * 100);
-    const entries = Object.entries(score) as [Area, [number, number]][];
+function ExamSession({
+  state,
+  update,
+}: {
+  state: AppState;
+  update: (fn: (state: AppState) => AppState) => void;
+}) {
+  const [audioAvailable, setAudioAvailable] = useState(
+    () => typeof window !== "undefined" && "speechSynthesis" in window,
+  );
+  const [questions, setQuestions] = useState(() => createExam(studiedWords(state), audioAvailable));
+  const [index, setIndex] = useState(0);
+  const [score, setScore] = useState<Record<Area, { correct: number; total: number }>>({
+    Vocabulary: { correct: 0, total: 0 },
+    Phrases: { correct: 0, total: 0 },
+    Listening: { correct: 0, total: 0 },
+  });
+  const [picked, setPicked] = useState<string | null>(null);
+  const [mistakes, setMistakes] = useState<string[]>([]);
+  const answered = useRef(false);
+  const saved = useRef(false);
+
+  useEffect(() => {
+    const handleAudioError = () => {
+      setAudioAvailable(false);
+      setQuestions((previous) =>
+        previous.map((question, questionIndex) =>
+          questionIndex > index || (questionIndex === index && picked === null)
+            ? replaceAudioQuestion(question)
+            : question,
+        ),
+      );
+    };
+    window.addEventListener("speakup-audio-error", handleAudioError);
+    return () => window.removeEventListener("speakup-audio-error", handleAudioError);
+  }, [index, picked]);
+
+  if (index >= questions.length) {
+    const totalCorrect = Object.values(score).reduce((sum, area) => sum + area.correct, 0);
     return (
       <main className="mx-auto max-w-xl px-5 py-10">
-        <p className="text-sm font-bold uppercase tracking-widest text-primary">Результат недели</p>
-        <h1 className="mt-2 text-7xl font-semibold">{pct}%</h1>
-        <div className="card-soft mt-8 space-y-3 p-6">
-          {entries.map(([a, [c, t]]) => {
-            const p = t ? Math.round((c / t) * 100) : 0;
-            return (
-              <div key={a}>
-                <div className="flex justify-between text-sm font-semibold"><span>{a}</span><span className={p >= 70 ? "text-success" : "text-destructive"}>{p}%</span></div>
-                <div className="mt-1 h-2 rounded-full bg-muted"><div className={`h-full rounded-full ${p >= 70 ? "bg-success" : "bg-primary"}`} style={{ width: `${p}%` }} /></div>
-              </div>
-            );
-          })}
+        <h1 className="text-4xl font-semibold">Результат проверки</h1>
+        <p className="mt-4 text-2xl">
+          {totalCorrect} из {questions.length} ·{" "}
+          {Math.round((totalCorrect / questions.length) * 100)}%
+        </p>
+        <section className="card-soft mt-6 space-y-3 p-6">
+          {(Object.keys(score) as Area[])
+            .filter((area) => score[area].total > 0)
+            .map((area) => (
+              <p key={area} className="flex justify-between gap-3">
+                <span>{AREA_LABELS[area]}</span>
+                <span>
+                  {score[area].correct} / {score[area].total}
+                </span>
+              </p>
+            ))}
+        </section>
+        {mistakes.length > 0 ? (
+          <section className="mt-6">
+            <h2 className="text-2xl">Что повторить</h2>
+            <ul className="mt-3 space-y-2">
+              {mistakes.map((text, i) => (
+                <li key={i}>{text}</li>
+              ))}
+            </ul>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Карточки с ошибками уже доступны в повторении.
+            </p>
+          </section>
+        ) : (
+          <p className="mt-6">Все ответы верны. Отличная работа!</p>
+        )}
+        <p className="mt-4 text-sm text-muted-foreground">Результат добавлен в ваш прогресс.</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link to="/progress" className="btn-primary">
+            Мой прогресс
+          </Link>
+          <Link to="/" className="btn-ghost">
+            На главную
+          </Link>
         </div>
-        <p className="mt-6 text-muted-foreground">Слова с ошибками вернутся к вам в повторении уже завтра.</p>
-        <Link to="/" className="btn-primary mt-8 w-full">На главную</Link>
       </main>
     );
   }
-
-  const q = questions[i]!;
-  const choose = (o: string) => {
-    const ok = o === q.answer;
-    setPicked(o);
-    setScore((s) => ({ ...s, [q.area]: [s[q.area][0] + (ok ? 1 : 0), s[q.area][1] + 1] }));
-    update((s) => touchStreak({ ...s, xp: s.xp + (ok ? 5 : 0), cards: { ...s.cards, [q.wordId]: review(s.cards[q.wordId], ok) }, weakAreas: ok ? s.weakAreas : { ...s.weakAreas, [q.area]: (s.weakAreas[q.area] ?? 0) + 1 } }));
-  };
-
+  const question = questions[index]!;
   return (
     <main className="mx-auto max-w-xl px-5 py-10">
-      <Link to="/" className="text-sm font-semibold text-muted-foreground">✕ Выйти</Link>
-      <div className="mt-4 h-2 rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${(i / questions.length) * 100}%` }} /></div>
-      <p className="mt-6 text-sm font-bold uppercase tracking-widest text-primary">{q.area} · {i + 1}/{questions.length}</p>
+      <Link to="/" className="btn-ghost">
+        Выйти
+      </Link>
+      <p className="mt-5 text-sm text-muted-foreground">
+        При выходе до завершения итог не сохраняется; ответы на карточки сохраняются сразу.
+      </p>
+      {!audioAvailable && (
+        <p className="mt-3 text-sm" role="status">
+          Озвучка недоступна. Аудирование заменено заданиями на фразы.
+        </p>
+      )}
+      <p className="mt-6 text-sm font-semibold">
+        {AREA_LABELS[question.area]} · {index + 1}/{questions.length}
+      </p>
       <section className="card-soft mt-4 p-6">
-        <h2 className="text-2xl font-semibold">{q.prompt}</h2>
-        {q.audio && <button className="btn-ghost mt-4" onClick={() => speak(q.audio!)}>🔊 Прослушать</button>}
+        <h1 className="text-2xl font-semibold">{question.prompt}</h1>
+        {question.audio && (
+          <button className="btn-ghost mt-4" onClick={() => speak(question.audio!)}>
+            Прослушать
+          </button>
+        )}
         <div className="mt-6 grid gap-3">
-          {q.options.map((o) => (
-            <button key={o} disabled={!!picked} onClick={() => choose(o)} className={`option ${picked ? (o === q.answer ? "border-success bg-accent" : o === picked ? "border-destructive" : "") : ""}`}>{o}</button>
+          {question.options.map((option) => (
+            <button
+              key={option}
+              disabled={picked !== null}
+              className={`option ${picked !== null ? (option === question.answer ? "border-success bg-accent" : option === picked ? "border-destructive" : "") : ""}`}
+              onClick={() => {
+                if (answered.current) return;
+                answered.current = true;
+                const ok = option === question.answer;
+                setPicked(option);
+                setScore((previous) => ({
+                  ...previous,
+                  [question.area]: {
+                    correct: previous[question.area].correct + (ok ? 1 : 0),
+                    total: previous[question.area].total + 1,
+                  },
+                }));
+                if (!ok)
+                  setMistakes((previous) => [
+                    ...previous,
+                    `${question.prompt} — ${question.answer}`,
+                  ]);
+                update((previous) =>
+                  touchStreak({
+                    ...previous,
+                    cards: {
+                      ...previous.cards,
+                      [question.wordId]: review(previous.cards[question.wordId], ok),
+                    },
+                    weakAreas: ok
+                      ? previous.weakAreas
+                      : {
+                          ...previous.weakAreas,
+                          [question.area]: (previous.weakAreas[question.area] ?? 0) + 1,
+                        },
+                  }),
+                );
+              }}
+            >
+              {option}
+            </button>
           ))}
         </div>
-        {picked && <button className="btn-primary mt-6 w-full" onClick={() => { setPicked(null); setI(i + 1); }}>Дальше</button>}
+        {picked !== null && (
+          <>
+            <p className="mt-4" role="status">
+              {picked === question.answer ? "Верно." : `Правильный ответ: ${question.answer}.`}
+            </p>
+            <button
+              className="btn-primary mt-6 w-full"
+              onClick={() => {
+                if (index + 1 === questions.length && !saved.current) {
+                  saved.current = true;
+                  update((previous) => ({
+                    ...previous,
+                    weeklyResult: {
+                      completedAt: Date.now(),
+                      correct: Object.values(score).reduce((sum, area) => sum + area.correct, 0),
+                      total: questions.length,
+                      areas: score,
+                    },
+                  }));
+                }
+                answered.current = false;
+                setPicked(null);
+                setIndex((n) => n + 1);
+              }}
+            >
+              {index + 1 === questions.length ? "Показать результат" : "Дальше"}
+            </button>
+          </>
+        )}
       </section>
     </main>
   );

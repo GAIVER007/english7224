@@ -1,14 +1,20 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { levels, placementQuestions, type Level } from "@/lib/content";
+import { levelFromScore } from "@/lib/learning";
 import { useAppState } from "@/lib/store";
 
 export const Route = createFileRoute("/placement")({
-  validateSearch: (s: Record<string, unknown>) => ({ choose: s["choose"] === true || s["choose"] === "true" ? true : undefined }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    choose: s["choose"] === true || s["choose"] === "true" ? true : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Тест уровня — SpeakUp" },
-      { name: "description", content: "Определите свой уровень английского от A1 до C1 за пару минут." },
+      {
+        name: "description",
+        content: "Определите свой уровень английского от A1 до C1 за пару минут.",
+      },
       { property: "og:title", content: "Тест уровня английского — SpeakUp" },
       { property: "og:description", content: "Короткий placement test от A1 до C1." },
     ],
@@ -16,19 +22,9 @@ export const Route = createFileRoute("/placement")({
   component: Placement,
 });
 
-export function levelFromScore(correctByLevel: Level[]): Level {
-  let lvl: Level = "A1";
-  for (const l of levels) {
-    const total = placementQuestions.filter((q) => q.level === l).length;
-    const ok = correctByLevel.filter((c) => c === l).length;
-    if (ok >= Math.ceil(total / 2)) lvl = l; else break;
-  }
-  return lvl;
-}
-
 function Placement() {
   const { choose } = Route.useSearch();
-  const { update } = useAppState();
+  const { update, ready } = useAppState();
   const nav = useNavigate();
   const [i, setI] = useState(0);
   const [correct, setCorrect] = useState<Level[]>([]);
@@ -39,13 +35,29 @@ function Placement() {
     nav({ to: "/" });
   };
 
+  if (!ready)
+    return (
+      <main className="p-8" role="status">
+        Загружаем профиль…
+      </main>
+    );
+
   if (choose) {
     return (
       <main className="mx-auto max-w-xl px-6 py-16">
+        <Link to="/" className="btn-ghost mb-6">
+          На главную
+        </Link>
         <h1 className="text-4xl font-semibold">Выберите уровень</h1>
+        <p className="mt-4 text-muted-foreground">
+          Это ваш ориентир для обучения. Сейчас доступен стартовый курс из пяти уроков A2; выбор
+          уровня не меняет его содержание.
+        </p>
         <div className="mt-8 grid gap-3">
           {levels.map((l) => (
-            <button key={l} className="option" onClick={() => finish(l)}>{l}</button>
+            <button key={l} className="option" onClick={() => finish(l)}>
+              {l}
+            </button>
           ))}
         </div>
       </main>
@@ -56,8 +68,13 @@ function Placement() {
     return (
       <main className="mx-auto max-w-xl px-6 py-16 text-center">
         <p className="text-muted-foreground">Ваш примерный уровень</p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Это короткий ориентировочный тест, не полноценная оценка CEFR. Доступный курс — A2.
+        </p>
         <h1 className="mt-2 text-8xl font-semibold text-primary">{result}</h1>
-        <button className="btn-primary mt-10" onClick={() => finish(result)}>Начать обучение</button>
+        <button className="btn-primary mt-10" onClick={() => finish(result)}>
+          Начать обучение
+        </button>
       </main>
     );
   }
@@ -72,10 +89,22 @@ function Placement() {
 
   return (
     <main className="mx-auto max-w-xl px-6 py-16">
-      <p className="text-sm font-semibold text-muted-foreground">Вопрос {i + 1} из {placementQuestions.length}</p>
+      <Link to="/" className="btn-ghost mb-6">
+        Выйти из теста
+      </Link>
+      <p className="mb-4 text-sm text-muted-foreground">
+        9 вопросов помогут выбрать ориентир. Результат можно изменить в профиле.
+      </p>
+      <p className="text-sm font-semibold text-muted-foreground">
+        Вопрос {i + 1} из {placementQuestions.length}
+      </p>
       <h1 className="mt-4 text-3xl font-semibold">{q.q}</h1>
       <div className="mt-8 grid gap-3">
-        {q.options.map((o, idx) => <button key={o} className="option" onClick={() => answer(idx)}>{o}</button>)}
+        {q.options.map((o, idx) => (
+          <button key={o} className="option" onClick={() => answer(idx)}>
+            {o}
+          </button>
+        ))}
       </div>
     </main>
   );

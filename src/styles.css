@@ -62,13 +62,20 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
-  h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
 }
 
 @utility card-soft {
@@ -79,24 +86,92 @@
 }
 
 @utility btn-primary {
-  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  background: var(--primary); color: var(--primary-foreground);
-  border-radius: 999px; padding: .85rem 1.6rem; font-weight: 700;
-  transition: transform .15s, filter .15s;
-  &:hover { filter: brightness(1.05); transform: translateY(-1px); }
-  &:disabled { opacity: .4; transform: none; }
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 999px;
+  padding: 0.85rem 1.6rem;
+  font-weight: 700;
+  transition:
+    transform 0.15s,
+    filter 0.15s;
+  &:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+  &:disabled {
+    opacity: 0.4;
+    transform: none;
+  }
 }
 
 @utility btn-ghost {
-  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  border: 1px solid var(--border); background: var(--card);
-  border-radius: 999px; padding: .6rem 1.2rem; font-weight: 600;
-  &:hover { background: var(--muted); }
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  font-weight: 600;
+  &:hover {
+    background: var(--muted);
+  }
 }
 
 @utility option {
-  width: 100%; text-align: left; padding: .9rem 1.1rem; border-radius: var(--radius-lg);
-  border: 1.5px solid var(--border); background: var(--card); font-weight: 600;
-  transition: border-color .15s, background .15s;
-  &:hover { border-color: var(--primary); }
+  width: 100%;
+  text-align: left;
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  font-weight: 600;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  &:hover {
+    border-color: var(--primary);
+  }
+}
+
+@layer base {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    &:focus-visible {
+      outline: 3px solid var(--ring);
+      outline-offset: 4px;
+    }
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  a {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  body {
+    min-width: 320px;
+    overflow-wrap: break-word;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }

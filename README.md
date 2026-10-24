@@ -1,26 +1,60 @@
-# English7224
+# SpeakUp / English7224
 
-Implement exactly the screenshot and nothing else
+Разговорный английский для русскоязычных учащихся. Текущая программа:
+**5 уроков A2, 26 слов** — ресторан, аэропорт, small talk, отель, покупки.
 
-This project was built with [Lovable](https://lovable.dev).
+## Возможности
 
-**Live app**: https://english7224.lovable.app
+- Ориентировочный тест уровня и ручной выбор A1–C1. Содержание текущего курса — A2.
+- Шесть последовательных этапов: повторение, слова, фразы, диалог,
+  речевая практика и мини-тест (порог завершения 70%).
+- Интервальное повторение с возвратом ошибочных карточек сразу.
+- XP за завершение этапов без повторных наград; серия дней и статистика.
+- Проверка изученных слов, фраз и аудирования с сохранением последнего результата.
+- Прогресс в localStorage, синхронизация вкладок и безопасный сброс только данных SpeakUp.
+- Браузерная озвучка; распознавание речи с обработкой ошибок и самостоятельной альтернативой.
 
-## Build with Lovable
+Распознавание сравнивает текст, а не качество произношения. Браузер может
+использовать внешний сервис для распознавания аудио. Запись запускается только
+по нажатию пользователя. В неподдерживаемом браузере доступна самостоятельная практика.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/b338cfa4-0c74-4347-aae7-c2e52c3a88a3).
+## Локальный запуск
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
-
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Нужны Node.js 22.12+ и Bun 1.3+. Проверено на Node 24.19 и Bun 1.3.14.
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+bun install --frozen-lockfile
+bun run dev --host 127.0.0.1 --port 5173
 ```
+
+Если загрузка зависает на IPv6, для этой команды можно выбрать IPv4:
+
+```sh
+bun --dns-result-order=ipv4first install --frozen-lockfile --network-concurrency=8
+```
+
+## Проверки
+
+```sh
+bun run typecheck
+bun run lint
+bun run test
+bun run build
+# все проверки последовательно:
+bun run check
+```
+
+Сборка использует конфигурацию Lovable / TanStack Start / Nitro для Cloudflare.
+Локальный запуск не публикует приложение. Существующий публичный сайт:
+https://english7224.lovable.app — локальные изменения туда автоматически не попадают.
+
+## Ограничения и план
+
+Аккаунтов, сервера и синхронизации между устройствами пока нет. Очистка данных
+браузера удаляет локальный прогресс. Полные учебные программы A1–C1, офлайн/PWA
+и серверное хранение — следующие продуктовые этапы. Тест уровня не является
+сертификацией CEFR. Подробный аудит и оставшаяся работа: [docs/READINESS.md](docs/READINESS.md).
+
+Проект связан с [Lovable](https://lovable.dev/projects/b338cfa4-0c74-4347-aae7-c2e52c3a88a3).
+Историю опубликованных коммитов нельзя переписывать; изменения main синхронизируются
+с редактором Lovable.

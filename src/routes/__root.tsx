@@ -8,7 +8,9 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+
+import { useAppState } from "@/lib/store";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -18,16 +20,16 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Страница не найдена</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          Проверьте адрес или вернитесь на главную.
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go home
+            На главную
           </Link>
         </div>
       </div>
@@ -46,10 +48,10 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          Не удалось загрузить страницу
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Попробуйте ещё раз или вернитесь на главную.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -59,13 +61,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            Попробовать снова
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            На главную
           </a>
         </div>
       </div>
@@ -90,7 +92,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,600&family=Manrope:wght@400;500;600;700&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,600&family=Manrope:wght@400;500;600;700&display=swap",
+      },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
@@ -120,7 +125,46 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <AppNotices />
       <Outlet />
     </QueryClientProvider>
+  );
+}
+
+function AppNotices() {
+  const { storageError } = useAppState();
+  const [audioError, setAudioError] = useState(false);
+  useEffect(() => {
+    const showError = () => setAudioError(true);
+    window.addEventListener("speakup-audio-error", showError);
+    return () => window.removeEventListener("speakup-audio-error", showError);
+  }, []);
+  return (
+    <>
+      {storageError && (
+        <p
+          role="alert"
+          className="mx-auto mt-4 max-w-3xl rounded-xl border border-destructive bg-card p-4 text-sm"
+        >
+          Не удалось прочитать или сохранить часть прогресса. Вы можете продолжить занятие, но
+          проверьте разрешение браузера на сохранение данных: последние изменения могут потеряться
+          после закрытия страницы.
+        </p>
+      )}
+      {audioError && (
+        <div
+          role="status"
+          className="mx-auto mt-4 flex max-w-3xl flex-wrap items-center gap-3 rounded-xl bg-muted p-4 text-sm"
+        >
+          <p>
+            Не удалось воспроизвести речь. Проверьте звук и доступность английского голоса в
+            браузере. Текст упражнений остаётся доступен.
+          </p>
+          <button className="btn-ghost" onClick={() => setAudioError(false)}>
+            Закрыть
+          </button>
+        </div>
+      )}
+    </>
   );
 }
