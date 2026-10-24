@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { OfflineApp } from "@/components/OfflineApp";
 import { useAppState } from "@/lib/store";
 
 import appCss from "../styles.css?url";
@@ -130,6 +131,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <AppNotices />
+      <OfflineApp />
       <Outlet />
     </QueryClientProvider>
   );

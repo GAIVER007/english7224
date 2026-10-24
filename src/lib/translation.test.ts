@@ -4,37 +4,39 @@ import {
   requestTranslation,
   translationInputError,
 } from "./translation";
-afterEach(() => vi.unstubAllGlobals());
-it("detects Russian/English including mixed text and ё", () => {
+import { translateOffline } from "./offline-translator";
+vi.mock("./offline-translator", () => ({ translateOffline: vi.fn() }));
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
+it("detects Russian/English and removes provider daily/byte limits", () => {
   expect(detectTranslationLanguage("Hello there")).toBe("en");
   expect(detectTranslationLanguage("Привет, John!")).toBe("ru");
   expect(detectTranslationLanguage("ёж")).toBe("ru");
   expect(translationInputError(" ")).toBeNull();
   expect(translationInputError("123")).not.toBeNull();
-  expect(translationInputError("я".repeat(241))).not.toBeNull();
+  expect(translationInputError("я".repeat(1000))).toBeNull();
+  expect(translationInputError("я".repeat(5001))).not.toBeNull();
 });
-it("validates server responses and uses a POST without putting text in URL", async () => {
-  const fetcher = vi
-    .fn()
-    .mockResolvedValueOnce(Response.json({ translation: "Hello", source: "ru", target: "en" }))
-    .mockResolvedValueOnce(Response.json({ translation: "stale", source: "en", target: "ru" }));
+it("translates locally without invoking a network translation endpoint", async () => {
+  const fetcher = vi.fn();
   vi.stubGlobal("fetch", fetcher);
+  vi.mocked(translateOffline).mockResolvedValue("Hello");
   const signal = new AbortController().signal;
-  expect(await requestTranslation("Привет", "ru", signal)).toMatchObject({ translation: "Hello" });
-  expect(fetcher).toHaveBeenCalledWith(
-    "/api/translate",
-    expect.objectContaining({
-      method: "POST",
-      signal,
-      body: JSON.stringify({ text: "Привет", source: "ru" }),
-    }),
-  );
-  await expect(requestTranslation("Привет", "ru", signal)).rejects.toThrow();
+  expect(await requestTranslation("Привет", "ru", signal)).toEqual({
+    translation: "Hello",
+    source: "ru",
+    target: "en",
+    provider: "OPUS-MT",
+  });
+  expect(translateOffline).toHaveBeenCalledWith("Привет", "ru", signal);
+  expect(fetcher).not.toHaveBeenCalled();
 });
-
-it("localizes Safari transport failures without exposing browser error text", async () => {
-  vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Load failed")));
-  await expect(requestTranslation("Hello", "en", new AbortController().signal)).rejects.toThrow(
-    "Нет связи с переводчиком",
-  );
+it("refuses empty or too-large input before starting inference", async () => {
+  await expect(requestTranslation(" ", "en", new AbortController().signal)).rejects.toThrow();
+  await expect(
+    requestTranslation("a".repeat(5001), "en", new AbortController().signal),
+  ).rejects.toThrow();
+  expect(translateOffline).not.toHaveBeenCalled();
 });

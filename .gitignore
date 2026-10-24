@@ -30,3 +30,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Generated offline inference runtime, copied from the locked package before dev/build
+public/onnx/

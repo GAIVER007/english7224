@@ -1,0 +1,17 @@
+SpeakUp offline translation
+
+Models: OPUS-MT Russian <-> English (Marian), converted to ONNX by the ONNX Community.
+Original models: Helsinki-NLP/opus-mt-ru-en and Helsinki-NLP/opus-mt-en-ru.
+ONNX model repositories:
+https://huggingface.co/onnx-community/opus-mt-ru-en
+https://huggingface.co/onnx-community/opus-mt-en-ru
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+Weights are downloaded from the pinned ONNX repository revisions. SpeakUp does not alter them.
+
+OPUS-MT authors: Jorg Tiedemann and Santhosh Thottingal.
+Reference: OPUS-MT -- Building open translation services for the World (2020).
+https://github.com/Helsinki-NLP/Opus-MT
+
+Runtime: Hugging Face Transformers.js (Apache-2.0), ONNX Runtime (MIT).
+Translation is performed locally in a browser Web Worker. Text is not sent to a translation API.

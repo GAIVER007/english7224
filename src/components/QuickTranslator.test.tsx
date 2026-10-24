@@ -7,11 +7,20 @@ vi.mock("@/lib/translation", async (importOriginal) => ({
   requestTranslation: vi.fn(),
 }));
 vi.mock("@/lib/store", () => ({ speak: vi.fn() }));
+vi.mock("./OfflineModels", async () => {
+  const { useEffect } = await import("react");
+  return {
+    OfflineModels: ({ onReady }: { onReady: (ready: boolean) => void }) => {
+      useEffect(() => onReady(true), [onReady]);
+      return null;
+    },
+  };
+});
 const translated = (translation: string, source: "ru" | "en" = "ru"): TranslationResult => ({
   translation,
   source,
   target: source === "ru" ? "en" : "ru",
-  provider: "MyMemory",
+  provider: "OPUS-MT",
 });
 beforeEach(() => {
   vi.useFakeTimers();
@@ -82,14 +91,14 @@ it("supports manual direction and swaps the actual translated text", async () =>
   expect(screen.getByLabelText("С какого языка")).toHaveValue("ru");
   expect(requestTranslation).toHaveBeenLastCalledWith("Привет", "ru", expect.any(AbortSignal));
 });
-it("shows provider failures, retries explicitly, and rejects non-language input", async () => {
+it("shows local model failures, retries explicitly, and rejects non-language input", async () => {
   vi.mocked(requestTranslation)
-    .mockRejectedValueOnce(new Error("Лимит исчерпан"))
+    .mockRejectedValueOnce(new Error("Не удалось выполнить перевод"))
     .mockResolvedValueOnce(translated("Hello"));
   render(<QuickTranslator />);
   type("Привет");
   await settle();
-  expect(screen.getByRole("alert")).toHaveTextContent("Лимит исчерпан");
+  expect(screen.getByRole("alert")).toHaveTextContent("Не удалось выполнить перевод");
   fireEvent.click(screen.getByRole("button", { name: "Попробовать снова" }));
   await settle();
   expect(screen.getByText("Hello")).toBeInTheDocument();

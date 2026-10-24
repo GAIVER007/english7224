@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRightLeft, Check, Copy, Languages, LoaderCircle, Volume2, X } from "lucide-react";
+import { OfflineModels } from "./OfflineModels";
 import { speak } from "@/lib/store";
 import {
   detectTranslationLanguage,
@@ -13,6 +14,8 @@ import {
 
 const labels = { ru: "Русский", en: "Английский" };
 export function QuickTranslator() {
+  const [modelsReady, setModelsReady] = useState(false);
+  const [modelCheck, setModelCheck] = useState(0);
   const [text, setText] = useState("");
   const [mode, setMode] = useState<TranslationMode>("auto");
   const [result, setResult] = useState<{ key: string; value: TranslationResult } | null>(null);
@@ -37,7 +40,7 @@ export function QuickTranslator() {
     setError("");
     setCopied(false);
     setCopyError("");
-    if (!trimmed || inputError || composing) {
+    if (!modelsReady || !trimmed || inputError || composing) {
       setLoading(false);
       return () => controller.abort();
     }
@@ -57,10 +60,19 @@ export function QuickTranslator() {
         setResult({ key, value });
       } catch (failure) {
         if (!live) return;
+        if (
+          failure &&
+          typeof failure === "object" &&
+          "code" in failure &&
+          failure.code === "not-installed"
+        ) {
+          setModelsReady(false);
+          setModelCheck((value) => value + 1);
+        }
         setError(
           failure instanceof Error && failure.message !== "Failed to fetch"
             ? failure.message
-            : "Нет связи с переводчиком. Проверь интернет и попробуй снова.",
+            : "Локальная модель не смогла завершить перевод. Попробуй более короткую фразу.",
         );
       } finally {
         if (live) setLoading(false);
@@ -71,7 +83,7 @@ export function QuickTranslator() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [trimmed, source, key, inputError, attempt, composing]);
+  }, [trimmed, source, key, inputError, attempt, composing, modelsReady]);
 
   useEffect(() => {
     if (!copied) return;
@@ -81,6 +93,7 @@ export function QuickTranslator() {
 
   return (
     <>
+      <OfflineModels key={modelCheck} onReady={setModelsReady} />
       <div className="flex items-center gap-3 mb-4">
         <label className="flex-1 text-sm font-bold" htmlFor="translation-mode">
           С какого языка
@@ -155,8 +168,8 @@ export function QuickTranslator() {
         </div>
       </section>
       <p id="translation-hint" className="text-xs text-muted-foreground mt-3">
-        Перевод появится после короткой паузы ввода. Смешанную фразу лучше перевести с выбранного
-        языка.
+        Без суточного лимита. До 5 000 символов за один текст. Перевод появится после короткой паузы
+        ввода. Смешанную фразу лучше перевести с выбранного языка.
       </p>
       <section
         className="card-soft translation-result p-5 mt-5"
@@ -193,7 +206,9 @@ export function QuickTranslator() {
             </p>
           ) : (
             <p className="subcopy mt-5">
-              Напиши по-русски или по-английски — и здесь появится перевод.
+              {modelsReady
+                ? "Напиши по-русски или по-английски — и здесь появится перевод."
+                : "Сначала скачай языковые пакеты. После этого интернет для перевода не понадобится."}
             </p>
           )}
         </div>
@@ -238,17 +253,12 @@ export function QuickTranslator() {
         )}
       </section>
       <p className="text-xs text-muted-foreground mt-5 leading-relaxed">
-        Перевод:{" "}
-        <a
-          href="https://mymemory.translated.net/"
-          target="_blank"
-          rel="noreferrer"
-          className="underline"
-        >
-          MyMemory
+        Локальные модели OPUS-MT (CC BY 4.0). Перевод вычисляется на устройстве; скорость и качество
+        зависят от модели и телефона. Озвучка без сети доступна, если в системе установлен нужный
+        голос. История текста не сохраняется.
+        <a className="underline ml-1" href="/model-licenses.txt" target="_blank" rel="noreferrer">
+          О моделях
         </a>
-        . Введённый текст отправляется сервису. Общий лимит приложения — около 5 000 символов в
-        день; нужен интернет. История здесь не сохраняется.
       </p>
     </>
   );
