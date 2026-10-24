@@ -1,9 +1,13 @@
 import { lessons, placementQuestions, levels, type Level, type Word } from "./content";
+import { lessonExamKey, moduleAvailable, moduleExamKey, pendingModule } from "./curriculum";
 import { recordPractice } from "./motivation";
 import { STEPS, touchStreak, type AppState, type Step } from "./store";
 
 export const wordPool = lessons.flatMap((lesson) => lesson.words);
 export const PASS_PERCENT = 70;
+export const EXAM_PASS_PERCENT = 80;
+const LESSON_EXAM_TOTAL = 7;
+const MODULE_EXAM_TOTAL = 15;
 
 export function shuffle<T>(items: readonly T[]): T[] {
   const result = [...items];
@@ -25,6 +29,7 @@ export function dueWords(state: AppState, now = Date.now()): Word[] {
 
 export function canOpenStep(state: AppState, day: number, step: Step): boolean {
   return (
+    pendingModule(state) === undefined &&
     day === state.day &&
     STEPS.slice(0, STEPS.indexOf(step)).every((s) => state.steps[`${day}:${s}`])
   );
@@ -32,7 +37,13 @@ export function canOpenStep(state: AppState, day: number, step: Step): boolean {
 
 export function completeStep(state: AppState, day: number, step: Step): AppState {
   const key = `${day}:${step}`;
-  if (day > lessons.length || !canOpenStep(state, day, step) || state.steps[key]) return state;
+  if (
+    day > lessons.length ||
+    !canOpenStep(state, day, step) ||
+    state.steps[key] ||
+    (step === "test" && !state.examResults?.[lessonExamKey(day)]?.passed)
+  )
+    return state;
   return recordPractice(
     touchStreak({
       ...state,
@@ -41,6 +52,67 @@ export function completeStep(state: AppState, day: number, step: Step): AppState
       day: step === "test" ? day + 1 : day,
     }),
   );
+}
+
+interface ExamScore {
+  correct: number;
+  total: number;
+}
+
+function validScore(score: ExamScore, expectedTotal: number): boolean {
+  return (
+    Number.isInteger(score.correct) &&
+    Number.isInteger(score.total) &&
+    score.total === expectedTotal &&
+    score.correct >= 0 &&
+    score.correct <= score.total
+  );
+}
+
+function passedExam(score: ExamScore): boolean {
+  return score.correct * 100 >= score.total * EXAM_PASS_PERCENT;
+}
+
+export function finishLessonExam(state: AppState, day: number, score: ExamScore): AppState {
+  const prerequisites = STEPS.slice(0, STEPS.indexOf("test"));
+  if (
+    !validScore(score, LESSON_EXAM_TOTAL) ||
+    day !== state.day ||
+    day < 1 ||
+    day > lessons.length ||
+    pendingModule(state) !== undefined ||
+    !prerequisites.every((step) => state.steps[`${day}:${step}`])
+  )
+    return state;
+
+  const passed = passedExam(score);
+  const withResult: AppState = {
+    ...state,
+    examResults: {
+      ...(state.examResults ?? {}),
+      [lessonExamKey(day)]: { ...score, completedAt: Date.now(), passed },
+    },
+  };
+  return passed ? completeStep(withResult, day, "test") : withResult;
+}
+
+export function finishModuleExam(state: AppState, moduleId: number, score: ExamScore): AppState {
+  if (!validScore(score, MODULE_EXAM_TOTAL) || !moduleAvailable(state, moduleId)) return state;
+
+  const key = moduleExamKey(moduleId);
+  const previous = state.examResults?.[key];
+  const passed = passedExam(score);
+  if (previous?.passed && !passed) return state;
+
+  const next: AppState = {
+    ...state,
+    xp: state.xp + (passed && !previous?.passed ? 30 : 0),
+    examResults: {
+      ...(state.examResults ?? {}),
+      [key]: { ...score, completedAt: Date.now(), passed },
+    },
+  };
+  return passed && !previous?.passed ? recordPractice(touchStreak(next)) : next;
 }
 
 export function studiedWords(state: AppState): Word[] {

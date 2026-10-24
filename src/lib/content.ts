@@ -1,3 +1,5 @@
+import { extendedLessons } from "./extended-content";
+
 export type Level = "A1" | "A2" | "B1" | "B2" | "C1";
 
 export interface Word {
@@ -25,6 +27,12 @@ export interface Lesson {
   dialogue: DialogueLine[];
   speaking: { prompt: string; target: string }[];
   grammar: { title: string; rule: string; examples: string[] };
+  grammarQuiz: {
+    prompt: string;
+    options: string[];
+    answer: string;
+    explanation: string;
+  };
 }
 
 export const lessons: Lesson[] = [
@@ -142,6 +150,12 @@ export const lessons: Lesson[] = [
       rule: "I'd like = I would like — вежливое «я бы хотел». Звучит мягче, чем I want.",
       examples: ["I'd like a coffee.", "I'd like to order.", "Would you like some water?"],
     },
+    grammarQuiz: {
+      prompt: "Как вежливо попросить кофе?",
+      options: ["I want coffee.", "I'd like a coffee, please.", "I liking coffee."],
+      answer: "I'd like a coffee, please.",
+      explanation: "I'd like — вежливая форма просьбы; после like можно поставить существительное.",
+    },
   },
   {
     day: 2,
@@ -237,6 +251,12 @@ export const lessons: Lesson[] = [
       title: "Present Continuous для планов",
       rule: "I'm flying to London tomorrow — Present Continuous для договорённостей на будущее.",
       examples: ["I'm leaving at 6.", "We're meeting at the gate.", "Are you flying tonight?"],
+    },
+    grammarQuiz: {
+      prompt: "Выберите договорённость на завтра в Present Continuous.",
+      options: ["I meet Anna tomorrow.", "I'm meeting Anna tomorrow.", "I met Anna tomorrow."],
+      answer: "I'm meeting Anna tomorrow.",
+      explanation: "Present Continuous описывает уже организованную будущую встречу.",
     },
   },
   {
@@ -335,6 +355,12 @@ export const lessons: Lesson[] = [
       title: "Present Perfect и Continuous",
       rule: "I've been busy lately — Present Perfect с be. I've been working — Present Perfect Continuous: действие продолжалось до настоящего момента.",
       examples: ["I've been working a lot.", "How have you been?", "She's been learning English."],
+    },
+    grammarQuiz: {
+      prompt: "Как сказать «Я много работал в последнее время»?",
+      options: ["I've been working a lot lately.", "I working a lot lately.", "I was work lately."],
+      answer: "I've been working a lot lately.",
+      explanation: "Have been + глагол с -ing подчёркивает длительность до настоящего момента.",
     },
   },
   {
@@ -441,6 +467,16 @@ export const lessons: Lesson[] = [
         "I don't need to hurry.",
       ],
     },
+    grammarQuiz: {
+      prompt: "Выберите правильную форму: «Мне нужно выехать до полудня».",
+      options: [
+        "I need check out by noon.",
+        "I need to check out by noon.",
+        "I need checking out by noon.",
+      ],
+      answer: "I need to check out by noon.",
+      explanation: "После need используется to + начальная форма глагола.",
+    },
   },
   {
     day: 5,
@@ -535,6 +571,12 @@ export const lessons: Lesson[] = [
       title: "This / these",
       rule: "this — одна вещь, these — несколько: How much is this? / How much are these?",
       examples: ["I like this one.", "These shoes are nice.", "Is this on sale?"],
+    },
+    grammarQuiz: {
+      prompt: "Как спросить цену этих ботинок?",
+      options: ["How much is these?", "How much are these?", "How many is this?"],
+      answer: "How much are these?",
+      explanation: "These — множественное число, поэтому нужен глагол are.",
     },
   },
   {
@@ -653,6 +695,12 @@ export const lessons: Lesson[] = [
         "Take the second exit.",
         "Don't cross the road here.",
       ],
+    },
+    grammarQuiz: {
+      prompt: "Как дать отрицательную инструкцию?",
+      options: ["Not cross here.", "Don't cross here.", "Doesn't cross here."],
+      answer: "Don't cross here.",
+      explanation: "Отрицательная команда строится как don't + начальная форма глагола.",
     },
   },
   {
@@ -779,6 +827,12 @@ export const lessons: Lesson[] = [
         "We're usually on time.",
       ],
     },
+    grammarQuiz: {
+      prompt: "Где usually стоит правильно?",
+      options: ["I go usually by bus.", "I usually go by bus.", "Usually I am go by bus."],
+      answer: "I usually go by bus.",
+      explanation: "Наречие частоты ставится перед обычным смысловым глаголом.",
+    },
   },
   {
     day: 8,
@@ -898,6 +952,12 @@ export const lessons: Lesson[] = [
       title: "Предложения с how about и let's",
       rule: "После how about используйте существительное или глагол с -ing. После let's нужен глагол без to.",
       examples: ["How about Friday?", "How about meeting at six?", "Let's meet near the station."],
+    },
+    grammarQuiz: {
+      prompt: "Как предложить встретиться в шесть?",
+      options: ["How about meet at six?", "How about meeting at six?", "How about to meet at six?"],
+      answer: "How about meeting at six?",
+      explanation: "После how about глагол получает окончание -ing.",
     },
   },
   {
@@ -1025,6 +1085,12 @@ export const lessons: Lesson[] = [
       rule: "Could you + глагол звучит мягче, чем can you. После could и can используйте глагол без to.",
       examples: ["Could you open the door?", "Could you explain this?", "Can you wait a moment?"],
     },
+    grammarQuiz: {
+      prompt: "Выберите вежливую просьбу.",
+      options: ["Could you explain this?", "Could you to explain this?", "You explain this."],
+      answer: "Could you explain this?",
+      explanation: "После could используется начальная форма глагола без to.",
+    },
   },
   {
     day: 10,
@@ -1139,7 +1205,14 @@ export const lessons: Lesson[] = [
         "We don't have to work late.",
       ],
     },
+    grammarQuiz: {
+      prompt: "Как сказать, что задерживаться необязательно?",
+      options: ["We mustn't work late.", "We don't have to work late.", "We haven't work late."],
+      answer: "We don't have to work late.",
+      explanation: "Don't have to означает отсутствие необходимости, а mustn't — запрет.",
+    },
   },
+  ...extendedLessons,
 ];
 
 export const placementQuestions: { q: string; options: string[]; answer: number; level: Level }[] =

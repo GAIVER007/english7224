@@ -2,21 +2,20 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   ArrowRight,
-  Check,
   ChevronRight,
   Flame,
   Layers3,
   Lightbulb,
   Languages,
-  LockKeyhole,
   PencilLine,
   SlidersHorizontal,
   Sparkles,
   Trophy,
   Zap,
 } from "lucide-react";
-import { lessonIcons } from "@/lib/lesson-icons";
+import { CoursePath } from "@/components/CoursePath";
 import { lessons } from "@/lib/content";
+import { pendingModule } from "@/lib/curriculum";
 import { currentStreak, dueWords, studiedWords } from "@/lib/learning";
 import { dailyProgress } from "@/lib/motivation";
 import { STEPS, useAppState } from "@/lib/store";
@@ -72,13 +71,15 @@ function Home() {
         <div className="coach-note">
           <Sparkles size={20} aria-hidden="true" />
           <p>
-            Начнём с {lessons.length} жизненных ситуаций уровня A2. Без регистрации, в твоём темпе.
+            Начнём с {lessons.length} жизненных ситуаций: от уверенной практики A2 к задачам B1. Без
+            регистрации, в твоём темпе.
           </p>
         </div>
       </main>
     );
 
-  const finished = state.day > lessons.length;
+  const pending = pendingModule(state);
+  const finished = state.day > lessons.length && !pending;
   const lesson = lessons[Math.min(state.day - 1, lessons.length - 1)]!;
   const done = STEPS.filter((step) => state.steps[`${state.day}:${step}`]).length;
   const due = dueWords(state).length;
@@ -179,41 +180,67 @@ function Home() {
         <div className="mission-top">
           <div>
             <p className="mission-tag">
-              {due
-                ? "Время закрепить"
-                : finished
-                  ? "Все истории пройдены"
-                  : `Разговорная миссия ${String(state.day).padStart(2, "0")}`}
+              {pending
+                ? `Экзамен модуля ${pending.id}`
+                : due
+                  ? "Время закрепить"
+                  : finished
+                    ? "Все истории пройдены"
+                    : `Разговорная миссия ${String(state.day).padStart(2, "0")}`}
             </p>
-            <h2>{due ? "Вспомним знакомое" : finished ? "Теперь — в жизнь!" : lesson.titleRu}</h2>
+            <h2>
+              {pending
+                ? `Закрепим модуль «${pending.title}»`
+                : due
+                  ? "Вспомним знакомое"
+                  : finished
+                    ? "Практика продолжается"
+                    : lesson.titleRu}
+            </h2>
             <p className="mission-description">
-              {due
-                ? "Самое время освежить знакомые слова в памяти."
-                : finished
-                  ? "Проверь, что осталось в памяти, и продолжай говорить."
-                  : lesson.title}
+              {pending
+                ? "Проверим память, понимание фраз и грамматику. Нужно 80%, чтобы завершить модуль и двигаться дальше."
+                : due
+                  ? "Самое время освежить знакомые слова в памяти."
+                  : finished
+                    ? "Повторяй карточки, проходи недельную проверку и возвращайся к миссиям, чтобы английский оставался живым."
+                    : lesson.title}
             </p>
           </div>
-          <LessonArtwork day={due ? 3 : state.day} />
+          <LessonArtwork day={pending ? pending.endDay : due ? 3 : state.day} />
         </div>
         <div className="mission-meta">
           <span>
             <Layers3 size={14} aria-hidden="true" />
-            {due ? `Карточек: ${due}` : `${lesson.words.length} слов · 6 этапов`}
+            {pending
+              ? "Слова · фразы · понимание"
+              : due
+                ? `Карточек: ${due}`
+                : `${lesson.words.length} слов · 6 этапов`}
           </span>
           <span>
             <Zap size={14} aria-hidden="true" />
-            {due ? "Укрепляем память" : finished ? "Проверка навыков" : "До 60 XP за урок"}
+            {pending
+              ? "Проходной результат: 80%"
+              : due
+                ? "Укрепляем память"
+                : finished
+                  ? "Долгий маршрут"
+                  : "До 60 XP за урок"}
           </span>
         </div>
-        {!due && !finished && (
+        {!pending && !due && !finished && (
           <div className="mission-progress" aria-label={`Пройдено ${done} из 6 этапов`}>
             {STEPS.map((step) => (
               <span key={step} className={state.steps[`${state.day}:${step}`] ? "done" : ""} />
             ))}
           </div>
         )}
-        {finished && !due ? (
+        {pending ? (
+          <Link to="/lesson" search={{ module: pending.id }} className="btn-primary">
+            Пройти экзамен модуля <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+        ) : finished && !due ? (
           <Link to="/weekly" className="btn-primary">
             Проверить себя <ArrowRight size={18} aria-hidden="true" />
           </Link>
@@ -279,50 +306,7 @@ function Home() {
           </span>
         }
       />
-      <ol className="course-list">
-        {lessons.map((item, index) => {
-          const completed = item.day < state.day;
-          const current = item.day === state.day;
-          const Icon = lessonIcons[index]!;
-          return (
-            <li
-              key={item.day}
-              className={`course-item ${current ? "current" : completed ? "complete" : ""}`}
-            >
-              <span className="course-icon">
-                {completed ? (
-                  <Check size={22} aria-hidden="true" />
-                ) : (
-                  <Icon size={22} aria-hidden="true" />
-                )}
-              </span>
-              {current ? (
-                <Link to="/lesson" search={{ review: undefined }}>
-                  <div>
-                    <h3>{item.titleRu}</h3>
-                    <p>
-                      Миссия {item.day} · {done ? "Продолжим отсюда" : "Можно начинать"}
-                    </p>
-                  </div>
-                  <ChevronRight size={18} aria-hidden="true" />
-                </Link>
-              ) : (
-                <>
-                  <div>
-                    <h3>{item.titleRu}</h3>
-                    <p>
-                      {completed
-                        ? "Завершено · слова в повторении"
-                        : `Миссия ${item.day} · после предыдущей`}
-                    </p>
-                  </div>
-                  {!completed && <LockKeyhole size={16} aria-label="Пока закрыто" />}
-                </>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+      <CoursePath state={state} />
       <div className="coach-note">
         <Lightbulb size={19} aria-hidden="true" />
         <p>

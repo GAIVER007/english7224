@@ -1,6 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { z } from "zod";
 import { lessons, type Level } from "./content";
+import { courseModules } from "./curriculum";
 import { BADGE_IDS, earnedBadgeIdsForState, type BadgeId } from "./motivation";
 
 export interface CardState {
@@ -14,6 +15,13 @@ export interface WeeklyResult {
   correct: number;
   total: number;
   areas: Record<string, { correct: number; total: number }>;
+}
+
+export interface ExamResult {
+  correct: number;
+  total: number;
+  completedAt: number;
+  passed: boolean;
 }
 
 export type DailyGoal = 3 | 5 | 10;
@@ -31,6 +39,7 @@ export interface AppState {
   activity?: Record<string, number>;
   earnedBadgeIds?: BadgeId[];
   weeklyResult?: WeeklyResult;
+  examResults?: Record<string, ExamResult>;
 }
 
 const KEY = "speakup-state-v1";
@@ -48,6 +57,7 @@ export function createInitialState(): AppState {
     dailyGoal: 5,
     activity: {},
     earnedBadgeIds: [],
+    examResults: {},
   };
 }
 
@@ -81,6 +91,41 @@ const weeklyResultSchema = z
   .refine((result) => result.correct <= result.total, {
     message: "Correct answers cannot exceed total answers.",
   });
+const examResultSchema = z
+  .object({
+    correct: nonNegativeInteger,
+    total: nonNegativeInteger.min(1),
+    completedAt: nonNegativeInteger,
+    passed: z.boolean(),
+  })
+  .strict()
+  .refine((result) => result.correct <= result.total, {
+    message: "Correct answers cannot exceed total answers.",
+  })
+  .refine(
+    (result) => {
+      const scorePassed = result.correct * 100 >= result.total * 80;
+      return result.passed === scorePassed;
+    },
+    { message: "Exam pass status must match its score." },
+  );
+const examResultsSchema = z
+  .record(z.string().regex(/^(lesson|module):\d+$/), examResultSchema)
+  .superRefine((results, context) => {
+    for (const [key, result] of Object.entries(results)) {
+      const [kind, rawId] = key.split(":");
+      const id = Number(rawId);
+      const expectedTotal = kind === "lesson" ? 7 : 15;
+      const highestId = kind === "lesson" ? lessons.length : courseModules.length;
+      if (id < 1 || id > highestId || result.total !== expectedTotal) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: "Exam key or total is outside the current course.",
+        });
+      }
+    }
+  });
 const fieldSchemas = {
   level: z.enum(["A1", "A2", "B1", "B2", "C1"]).nullable(),
   day: nonNegativeInteger.min(1),
@@ -93,8 +138,9 @@ const fieldSchemas = {
   dailyGoal: z.union([z.literal(3), z.literal(5), z.literal(10)]),
   activity: z.record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/), nonNegativeInteger),
   earnedBadgeIds: z.array(z.enum(BADGE_IDS)),
+  examResults: examResultsSchema,
 } satisfies Record<keyof Omit<AppState, "weeklyResult">, z.ZodTypeAny>;
-const migratedDefaultFields = new Set(["dailyGoal", "activity", "earnedBadgeIds"]);
+const migratedDefaultFields = new Set(["dailyGoal", "activity", "earnedBadgeIds", "examResults"]);
 
 interface StoreSnapshot {
   state: AppState;
@@ -378,5 +424,5 @@ export const STEP_LABELS: Record<Step, string> = {
   phrases: "Фразы",
   dialogue: "Диалог",
   speaking: "Speaking",
-  test: "Мини-тест",
+  test: "Мини-экзамен",
 };

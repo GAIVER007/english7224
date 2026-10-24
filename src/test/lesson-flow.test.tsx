@@ -17,6 +17,10 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
+vi.mock("@/lib/learning", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/learning")>()),
+  shuffle: <T,>(items: readonly T[]) => [...items],
+}));
 import { Route } from "@/routes/lesson";
 
 afterEach(() => {
@@ -28,7 +32,7 @@ it("completes every lesson stage, resumes after remount, and advances once", () 
   updateAppState(() => ({ ...createInitialState(), level: "A2" }));
   const Lesson = Route.options.component as ComponentType;
   const first = render(<Lesson />);
-  expect(screen.getByRole("button", { name: "Мини-тест" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Мини-экзамен" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
   first.unmount();
   render(<Lesson />);
@@ -48,15 +52,32 @@ it("completes every lesson stage, resumes after remount, and advances once", () 
       }),
     );
   }
-  for (const word of lessons[0]!.words) {
-    fireEvent.click(screen.getByRole("button", { name: word.ru }));
-    fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
+  for (const word of lessons[0]!.words.slice(0, 4)) {
+    fireEvent.change(screen.getByLabelText("Ответ на английском"), { target: { value: word.en } });
+    fireEvent.click(screen.getByRole("button", { name: "Проверить ответ" }));
+    fireEvent.click(screen.getByRole("button", { name: "Следующий вопрос" }));
   }
-  expect(screen.getByRole("heading", { name: "Результат: 6 из 6" })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
+  for (const word of lessons[0]!.words.slice(0, 2)) {
+    fireEvent.click(screen.getByRole("button", { name: word.exampleRu }));
+    fireEvent.click(screen.getByRole("button", { name: "Следующий вопрос" }));
+  }
+  fireEvent.click(screen.getByRole("button", { name: lessons[0]!.grammarQuiz.answer }));
+  fireEvent.click(screen.getByRole("button", { name: "Показать результат" }));
+  expect(screen.getByRole("heading", { name: "Экзамен сдан" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Завершить экзамен" }));
   const saved = JSON.parse(localStorage.getItem("speakup-state-v1")!);
   expect(saved.day).toBe(2);
+  expect(saved.examResults["lesson:1"]).toMatchObject({ correct: 7, total: 7, passed: true });
   expect(saved.xp).toBe(60);
   expect(Object.keys(saved.steps)).toHaveLength(6);
   expect(navigate).toHaveBeenCalledWith({ to: "/" });
+});
+
+it("shows the mandatory module exam instead of mission six after five completed missions", () => {
+  updateAppState(() => ({ ...createInitialState(), level: "A2", day: 6 }));
+  const Lesson = Route.options.component as ComponentType;
+  render(<Lesson />);
+  expect(screen.getByText("Экзамен модуля 1")).toBeInTheDocument();
+  expect(screen.getByText(/Вопрос 1 из 15/)).toBeInTheDocument();
+  expect(screen.queryByRole("navigation", { name: "Этапы урока" })).not.toBeInTheDocument();
 });

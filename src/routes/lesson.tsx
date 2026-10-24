@@ -4,6 +4,10 @@ import { ArrowRight, Check, LockKeyhole, Play, Volume2 } from "lucide-react";
 import { TrainingHeader } from "@/components/TrainingUI";
 import { RecallPractice } from "@/components/RecallPractice";
 import { recordPractice } from "@/lib/motivation";
+import { Assessment } from "@/components/Assessment";
+import { createMissionAssessment, createModuleAssessment } from "@/lib/assessment";
+import { courseModules, pendingModule, moduleAvailable } from "@/lib/curriculum";
+import { finishLessonExam, finishModuleExam } from "@/lib/learning";
 import { lessons } from "@/lib/content";
 import {
   review,
@@ -23,7 +27,24 @@ import { SpeakingPractice } from "@/components/SpeakingPractice";
 export const Route = createFileRoute("/lesson")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { review?: boolean | undefined; recall?: boolean | undefined } => ({
+  ): {
+    review?: boolean | undefined;
+    recall?: boolean | undefined;
+    module?: number | undefined;
+    practice?: number | undefined;
+  } => ({
+    module:
+      Number.isInteger(Number(search["module"])) &&
+      Number(search["module"]) >= 1 &&
+      Number(search["module"]) <= 6
+        ? Number(search["module"])
+        : undefined,
+    practice:
+      Number.isInteger(Number(search["practice"])) &&
+      Number(search["practice"]) >= 1 &&
+      Number(search["practice"]) <= lessons.length
+        ? Number(search["practice"])
+        : undefined,
     recall: search["recall"] === true || search["recall"] === "true" ? true : undefined,
     review: search["review"] === true || search["review"] === "true" ? true : undefined,
   }),
@@ -43,7 +64,7 @@ export const Route = createFileRoute("/lesson")({
 
 function LessonPage() {
   const { state, update, ready } = useAppState();
-  const { review: reviewOnly, recall: recallOnly } = Route.useSearch();
+  const { review: reviewOnly, recall: recallOnly, module: moduleId, practice } = Route.useSearch();
   if (!ready)
     return (
       <main className="p-8" role="status">
@@ -61,13 +82,44 @@ function LessonPage() {
     );
   if (recallOnly) return <RecallSession state={state} update={update} />;
   if (reviewOnly) return <ReviewSession state={state} update={update} />;
+  if (practice && practice < state.day)
+    return <RevisionSession key={practice} day={practice} state={state} update={update} />;
+  const pending = pendingModule(state);
+  const selectedModule = moduleId ? courseModules.find((item) => item.id === moduleId) : pending;
+  if (selectedModule) {
+    if (moduleAvailable(state, selectedModule.id))
+      return (
+        <ModuleSession
+          key={selectedModule.id}
+          moduleId={selectedModule.id}
+          state={state}
+          update={update}
+        />
+      );
+    return (
+      <main className="app-shell">
+        <TrainingHeader
+          title="Экзамен пока закрыт"
+          detail={
+            state.day > selectedModule.endDay
+              ? "Сначала сдай экзамен предыдущего модуля"
+              : "Сначала заверши все пять миссий модуля"
+          }
+        />
+        <Link to="/lesson" search={{ module: undefined }} className="btn-primary mt-6">
+          Продолжить миссию
+        </Link>
+      </main>
+    );
+  }
   if (state.day > lessons.length)
     return (
       <main className="app-shell focus-shell">
-        <h1 className="text-3xl">Курс завершён</h1>
+        <h1 className="text-3xl">Все модули пройдены</h1>
         <p className="mt-4">
-          Вы прошли все {lessons.length} уроков. Продолжайте повторять слова и пройдите итоговую
-          проверку.
+          Ты прошёл {lessons.length} миссий и экзамены модулей. Это этап практики A2–B1, а не весь
+          английский. Продолжай повторять трудные слова, проверять изученное и пересказывать диалоги
+          своими словами.
         </p>
         <Link to="/" className="btn-primary mt-6">
           На главную
@@ -285,13 +337,20 @@ function LessonSession({ state, update }: SessionProps) {
         {cur === "speaking" && <SpeakingPractice items={lesson.speaking} onDone={complete} />}
 
         {cur === "test" && (
-          <WordQuiz
-            requirePass
-            words={lesson.words}
-            pool={pool}
-            onAnswer={answer}
-            onDone={complete}
-          />
+          <>
+            <p className="mb-5 text-sm text-muted-foreground">
+              7 вопросов: слова без подсказок, понимание фраз и грамматика. Нужно минимум 6 верных
+              ответов. Речевая практика уже пройдена; этот экзамен не оценивает произношение.
+            </p>
+            <Assessment
+              makeQuestions={() => createMissionAssessment(lesson)}
+              onAnswer={answer}
+              onFinish={(result) => {
+                update((s) => finishLessonExam(s, day, result));
+                if (result.correct / result.total >= 0.8) void nav({ to: "/" });
+              }}
+            />
+          </>
         )}
       </section>
     </main>
@@ -316,6 +375,132 @@ function RecallSession({ state, update }: SessionProps) {
             )
           }
         />
+      </section>
+    </main>
+  );
+}
+
+function ModuleSession({ state, update, moduleId }: SessionProps & { moduleId: number }) {
+  const module = courseModules.find((item) => item.id === moduleId)!;
+  const items = lessons.filter((item) => item.day >= module.startDay && item.day <= module.endDay);
+  const nav = useNavigate();
+  return (
+    <main className="app-shell focus-shell">
+      <TrainingHeader title={`Экзамен модуля ${module.id}`} detail={module.title} />
+      <h1 className="page-title">Соберём всё вместе</h1>
+      <p className="subcopy">
+        15 вопросов по пяти миссиям. Нужно 12 верных ответов (80%). Ошибки можно разобрать и
+        пересдать. Сдача завершает модуль. Для следующих миссий сначала нужно пройти эту проверку.
+      </p>
+      <section className="lesson-stage">
+        <Assessment
+          makeQuestions={() => createModuleAssessment(items)}
+          onAnswer={(id, ok) =>
+            update((s) => ({ ...s, cards: { ...s.cards, [id]: review(s.cards[id], ok) } }))
+          }
+          onFinish={(result) => {
+            update((s) => finishModuleExam(s, moduleId, result));
+            if (result.correct / result.total >= 0.8) void nav({ to: "/" });
+          }}
+        />
+      </section>
+    </main>
+  );
+}
+
+function RevisionSession({ day, update }: SessionProps & { day: number }) {
+  const lesson = lessons[day - 1]!;
+  const [mode, setMode] = useState<"notes" | "speaking" | "exam">("notes");
+  const nav = useNavigate();
+  return (
+    <main className="app-shell focus-shell">
+      <TrainingHeader
+        title={lesson.titleRu}
+        detail={`Повторение миссии ${day} · ${lesson.level}`}
+      />
+      <h1 className="page-title">Сделаем увереннее</h1>
+      <p className="subcopy">
+        Можно вернуться в любую пройденную миссию. Повторная проверка не отменяет результат и не
+        даёт XP за уже выполненные этапы.
+      </p>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {(
+          [
+            ["notes", "Материал"],
+            ["speaking", "Говорить"],
+            ["exam", "Проверка"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            className="btn-ghost"
+            key={value}
+            aria-pressed={mode === value}
+            onClick={() => setMode(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <section className="lesson-stage" key={mode}>
+        {mode === "notes" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-bold">{lesson.grammar.title}</h2>
+              <p className="mt-2">{lesson.grammar.rule}</p>
+              {lesson.grammar.examples.map((item) => (
+                <p key={item} className="mt-2">
+                  {item}
+                </p>
+              ))}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Слова в контексте</h2>
+              {lesson.words.map((word) => (
+                <div key={word.id} className="border-b border-border py-3">
+                  <button className="btn-ghost" onClick={() => speak(word.en)}>
+                    {word.en} <Volume2 size={16} aria-label="Послушать слово" />
+                  </button>
+                  <p>{word.ru}</p>
+                  <p className="mt-2 text-sm">{word.example}</p>
+                  <p className="text-sm text-muted-foreground">{word.exampleRu}</p>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Понять и пересказать</h2>
+              <p className="my-3 text-sm">
+                Прослушай диалог, затем закрой текст и перескажи ситуацию своими словами. Это
+                самостоятельная практика без автоматической оценки.
+              </p>
+              <button
+                className="btn-primary w-full"
+                onClick={() => speak(lesson.dialogue.map((line) => line.en).join(" "))}
+              >
+                Прослушать диалог
+              </button>
+              {lesson.dialogue.map((line, i) => (
+                <p key={i} className="mt-3">
+                  {line.en}
+                  <span className="block text-sm text-muted-foreground">{line.ru}</span>
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+        {mode === "speaking" && (
+          <SpeakingPractice items={lesson.speaking} onDone={() => setMode("notes")} />
+        )}
+        {mode === "exam" && (
+          <Assessment
+            makeQuestions={() => createMissionAssessment(lesson)}
+            onAnswer={(id, ok) =>
+              update((s) => ({ ...s, cards: { ...s.cards, [id]: review(s.cards[id], ok) } }))
+            }
+            onFinish={(result) => {
+              if (result.correct / result.total >= 0.8) void nav({ to: "/" });
+            }}
+          />
+        )}
       </section>
     </main>
   );

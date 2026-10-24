@@ -131,8 +131,74 @@ describe("shared app state", () => {
       dailyGoal: 5,
       activity: {},
       earnedBadgeIds: ["first-lesson"],
+      examResults: {},
     });
     expect(hook.result.current.storageError).toBeNull();
+  });
+
+  it("migrates completed legacy lessons without inventing exam results or resetting progress", async () => {
+    localStorage.setItem(
+      "speakup-state-v1",
+      JSON.stringify({
+        level: "A2",
+        day: 11,
+        xp: 600,
+        streak: 4,
+        lastActive: "Fri Oct 24 2026",
+        steps: Object.fromEntries(
+          Array.from({ length: 10 }, (_, index) => [`${index + 1}:test`, true]),
+        ),
+        cards: {},
+        weakAreas: {},
+      }),
+    );
+
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+
+    expect(hook.result.current.state).toMatchObject({ day: 11, xp: 600, examResults: {} });
+    expect(hook.result.current.storageError).toBeNull();
+  });
+
+  it("repairs invalid stored exam records while preserving unrelated progress", async () => {
+    localStorage.setItem(
+      "speakup-state-v1",
+      JSON.stringify({
+        ...createInitialState(),
+        day: 4,
+        xp: 210,
+        examResults: {
+          "lesson:3": { correct: 8, total: 7, completedAt: 10, passed: true },
+        },
+      }),
+    );
+
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+
+    expect(hook.result.current.state).toMatchObject({ day: 4, xp: 210, examResults: {} });
+    expect(hook.result.current.storageError).toContain("repaired");
+  });
+
+  it("rejects invalid exam records in imported backups", async () => {
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+    const invalid = {
+      ...createInitialState(),
+      examResults: {
+        wrongKey: { correct: 7, total: 7, completedAt: 10, passed: true },
+      },
+    };
+
+    expect(() => restoreAppState(invalid)).toThrow(/examResults.*недопустимое/i);
+    expect(() =>
+      restoreAppState({
+        ...createInitialState(),
+        examResults: {
+          "module:999": { correct: 1, total: 1, completedAt: 10, passed: true },
+        },
+      }),
+    ).toThrow(/examResults.*недопустимое/i);
   });
 
   it("keeps in-memory state usable when localStorage writes fail", async () => {

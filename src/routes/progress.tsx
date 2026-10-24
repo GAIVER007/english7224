@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { ProgressBackup } from "@/components/ProgressBackup";
 import { lessons } from "@/lib/content";
+import { courseModules, moduleExamKey } from "@/lib/curriculum";
 import { AREA_LABELS, type Area } from "@/lib/exam";
 import { currentStreak, dueWords } from "@/lib/learning";
 import { earnedBadges, learnerRank, weeklyActivity } from "@/lib/motivation";
@@ -88,6 +89,43 @@ function Progress() {
       <p className="mt-2 text-xs text-muted-foreground">
         Ранг отражает практику, а не языковой уровень.
       </p>
+      <SectionHeading title="Экзамены модулей" aside={<span>A2 → B1</span>} />
+      <section className="card-soft p-5">
+        <ul className="space-y-4">
+          {courseModules.map((module) => {
+            const result = state.examResults?.[moduleExamKey(module.id)];
+            return (
+              <li key={module.id} className="flex min-h-11 items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold">
+                    {module.id}. {module.title}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {result
+                      ? new Date(result.completedAt).toLocaleDateString("ru-RU")
+                      : `После миссии ${module.endDay}`}
+                  </p>
+                </div>
+                <span
+                  className={
+                    result?.passed
+                      ? "shrink-0 text-right text-sm font-bold text-success"
+                      : "shrink-0 text-right text-xs text-muted-foreground"
+                  }
+                >
+                  {result
+                    ? `${result.correct}/${result.total} · ${result.passed ? "сдан" : "повторить"}`
+                    : "впереди"}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-4 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
+          Это учебные проверки внутри SpeakUp. Они показывают, что повторить, но не являются
+          официальной оценкой или сертификатом CEFR.
+        </p>
+      </section>
       <div className="stats-grid">
         <div className="stat-tile">
           <Flame size={19} className="mx-auto mb-2 text-primary" aria-hidden="true" />
@@ -227,7 +265,9 @@ function Progress() {
       </section>
       <details className="card-soft mt-6 p-5">
         <summary className="min-h-11 cursor-pointer font-bold text-sm">Мои настройки</summary>
-        <p className="subcopy mt-3">Ориентир: {state.level ?? "не выбран"}. Текущий курс — A2.</p>
+        <p className="subcopy mt-3">
+          Ориентир: {state.level ?? "не выбран"}. Текущий маршрут — практика от A2 к задачам B1.
+        </p>
         <Link to="/placement" search={{ choose: true }} className="btn-ghost mt-3 w-full">
           Изменить уровень
         </Link>
