@@ -1,7 +1,14 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { earnedBadges } from "./motivation";
-import { createInitialState, resetAppState, review, touchStreak, useAppState } from "./store";
+import {
+  createInitialState,
+  resetAppState,
+  restoreAppState,
+  review,
+  touchStreak,
+  useAppState,
+} from "./store";
 
 afterEach(() => {
   cleanup();
@@ -172,6 +179,68 @@ describe("shared app state", () => {
         .filter((badge) => badge.earned)
         .map((badge) => badge.id),
     ).toEqual(["ten-words", "ten-mastered", "streak-3"]);
+  });
+
+  it("restores a validated state by replacement without merging current progress", async () => {
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+    act(() =>
+      hook.result.current.update((state) => ({
+        ...state,
+        xp: 300,
+        streak: 7,
+        cards: { old: { box: 4, due: 0, correct: 5, wrong: 0 } },
+      })),
+    );
+    const restored = {
+      ...createInitialState(),
+      level: "A1" as const,
+      xp: 20,
+      steps: { "1:review": true },
+      earnedBadgeIds: [],
+    };
+
+    act(() => restoreAppState(restored));
+
+    expect(hook.result.current.state).toEqual(restored);
+    expect(hook.result.current.state.cards).toEqual({});
+    expect(hook.result.current.state.earnedBadgeIds).toEqual([]);
+    expect(JSON.parse(localStorage.getItem("speakup-state-v1") ?? "null")).toEqual(restored);
+  });
+
+  it("leaves prior progress untouched when restore persistence fails", async () => {
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+    act(() => hook.result.current.update((state) => ({ ...state, xp: 80, day: 2 })));
+    const before = hook.result.current.state;
+    const persistedBefore = localStorage.getItem("speakup-state-v1");
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Quota exceeded", "QuotaExceededError");
+    });
+
+    expect(() => restoreAppState({ ...createInitialState(), xp: 999 })).toThrow(
+      /не удалось сохранить.*текущие данные не изменены/i,
+    );
+
+    expect(hook.result.current.state).toBe(before);
+    expect(localStorage.getItem("speakup-state-v1")).toBe(persistedBefore);
+  });
+
+  it("rejects an impossible restored day before persistence and keeps current progress", async () => {
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+    act(() => hook.result.current.update((state) => ({ ...state, xp: 80, day: 2 })));
+    const before = hook.result.current.state;
+    const persistedBefore = localStorage.getItem("speakup-state-v1");
+    const storageSpy = vi.spyOn(Storage.prototype, "setItem");
+
+    expect(() => restoreAppState({ ...createInitialState(), day: 999 })).toThrow(
+      /день, которого нет.*новой версии/i,
+    );
+
+    expect(storageSpy).not.toHaveBeenCalled();
+    expect(hook.result.current.state).toBe(before);
+    expect(localStorage.getItem("speakup-state-v1")).toBe(persistedBefore);
   });
 
   it("resets only the app storage key", async () => {

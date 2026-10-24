@@ -4,6 +4,22 @@ import {
   MessagesSquare,
   BedDouble,
   ShoppingBag,
+  MapPin,
+  Sun,
+  CalendarDays,
+  HandHelping,
+  BriefcaseBusiness,
   type LucideIcon,
 } from "lucide-react";
-export const lessonIcons: LucideIcon[] = [Utensils, Plane, MessagesSquare, BedDouble, ShoppingBag];
+export const lessonIcons: LucideIcon[] = [
+  Utensils,
+  Plane,
+  MessagesSquare,
+  BedDouble,
+  ShoppingBag,
+  MapPin,
+  Sun,
+  CalendarDays,
+  HandHelping,
+  BriefcaseBusiness,
+];

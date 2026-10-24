@@ -70,7 +70,9 @@ function Home() {
         </div>
         <div className="coach-note">
           <Sparkles size={20} aria-hidden="true" />
-          <p>Начнём с пяти жизненных ситуаций уровня A2. Без регистрации, в твоём темпе.</p>
+          <p>
+            Начнём с {lessons.length} жизненных ситуаций уровня A2. Без регистрации, в твоём темпе.
+          </p>
         </div>
       </main>
     );
@@ -180,7 +182,7 @@ function Home() {
                 ? "Время закрепить"
                 : finished
                   ? "Все истории пройдены"
-                  : `Разговорная миссия 0${state.day}`}
+                  : `Разговорная миссия ${String(state.day).padStart(2, "0")}`}
             </p>
             <h2>{due ? "Вспомним знакомое" : finished ? "Теперь — в жизнь!" : lesson.titleRu}</h2>
             <p className="mission-description">

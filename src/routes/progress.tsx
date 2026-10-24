@@ -10,6 +10,7 @@ import {
   Target,
   Trophy,
 } from "lucide-react";
+import { ProgressBackup } from "@/components/ProgressBackup";
 import { lessons } from "@/lib/content";
 import { AREA_LABELS, type Area } from "@/lib/exam";
 import { currentStreak, dueWords } from "@/lib/learning";
@@ -230,6 +231,18 @@ function Progress() {
         <Link to="/placement" search={{ choose: true }} className="btn-ghost mt-3 w-full">
           Изменить уровень
         </Link>
+        <section className="mt-5 border-t border-border pt-5" aria-labelledby="phone-title">
+          <h3 id="phone-title">SpeakUp на главном экране</h3>
+          <p className="subcopy mt-2">
+            На iPhone: открой сайт в Safari → «Поделиться» → «На экран Домой». На Android: меню
+            браузера → «Добавить на главный экран» или «Установить приложение».
+          </p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Пока для открытия нужен интернет. Сохрани копию прогресса перед переходом в
+            установленное приложение: браузер может использовать отдельное хранилище.
+          </p>
+        </section>
+        <ProgressBackup />
         <p className="mt-5 text-xs text-muted-foreground">
           Прогресс живёт в этом браузере. Очистка его данных удалит достижения.
         </p>

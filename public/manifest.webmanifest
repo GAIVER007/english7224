@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "SpeakUp — твой английский",
+  "short_name": "SpeakUp",
+  "description": "Личная практика разговорного английского каждый день",
+  "lang": "ru",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f8fc",
+  "theme_color": "#6350d6",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

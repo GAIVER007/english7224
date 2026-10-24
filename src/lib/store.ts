@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { z } from "zod";
-import type { Level } from "./content";
+import { lessons, type Level } from "./content";
 import { BADGE_IDS, earnedBadgeIdsForState, type BadgeId } from "./motivation";
 
 export interface CardState {
@@ -152,6 +152,47 @@ function normalizeState(value: unknown): { state: AppState; repaired: boolean } 
   return { state, repaired };
 }
 
+export function validateAppStateForImport(value: unknown): AppState {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("Данные прогресса должны быть объектом.");
+  }
+  const defaults = createInitialState();
+  const source = value as Record<string, unknown>;
+  const validated: Record<string, unknown> = { ...source };
+
+  for (const [field, schema] of Object.entries(fieldSchemas)) {
+    if (source[field] === undefined && migratedDefaultFields.has(field)) {
+      validated[field] = defaults[field as keyof typeof defaults];
+      continue;
+    }
+    const result = schema.safeParse(source[field]);
+    if (!result.success) {
+      throw new Error(`Поле прогресса «${field}» содержит недопустимое значение.`);
+    }
+    validated[field] = result.data;
+  }
+
+  if ((validated["day"] as number) > lessons.length + 1) {
+    throw new Error(
+      "В копии указан день, которого нет в текущей версии курса. Возможно, копия создана в более новой версии SpeakUp.",
+    );
+  }
+
+  if (source["weeklyResult"] !== undefined) {
+    const result = weeklyResultSchema.safeParse(source["weeklyResult"]);
+    if (!result.success) {
+      throw new Error("Поле прогресса «weeklyResult» содержит недопустимое значение.");
+    }
+    validated["weeklyResult"] = result.data;
+  } else {
+    delete validated["weeklyResult"];
+  }
+
+  const state = validated as unknown as AppState;
+  state.earnedBadgeIds = earnedBadgeIdsForState(state);
+  return state;
+}
+
 function parseStoredState(raw: string | null): { state: AppState; repaired: boolean } {
   if (raw === null) return { state: createInitialState(), repaired: false };
   try {
@@ -246,6 +287,18 @@ export function updateAppState(fn: (state: AppState) => AppState) {
   };
   const storageError = typeof window === "undefined" ? null : persist(state);
   replaceSnapshot({ state, ready: true, storageError });
+}
+
+export function restoreAppState(value: unknown) {
+  ensureHydrated();
+  const state = validateAppStateForImport(value);
+  if (typeof window !== "undefined") {
+    const storageError = persist(state);
+    if (storageError) {
+      throw new Error("Не удалось сохранить восстановленный прогресс. Текущие данные не изменены.");
+    }
+  }
+  replaceSnapshot({ state, ready: true, storageError: null });
 }
 
 export function resetAppState() {

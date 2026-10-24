@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { TrainingHeader, Brand } from "@/components/TrainingUI";
 import { ArrowRight, Sprout } from "lucide-react";
 import { useState } from "react";
-import { levels, placementQuestions, type Level } from "@/lib/content";
+import { lessons, levels, placementQuestions, type Level } from "@/lib/content";
 import { levelFromScore } from "@/lib/learning";
 import { useAppState } from "@/lib/store";
 
@@ -50,8 +50,8 @@ function Placement() {
         <TrainingHeader title="Твоя точка старта" detail="Её всегда можно изменить" />
         <h1 className="text-4xl font-semibold">Выбери свой уровень</h1>
         <p className="mt-4 text-muted-foreground">
-          Как ты чувствуешь себя в английском? Это ориентир для тебя. Пока тренируемся на пяти
-          жизненных ситуациях уровня A2.
+          Как ты чувствуешь себя в английском? Это ориентир для тебя. В курсе — {lessons.length}{" "}
+          разговорных ситуаций уровня A2.
         </p>
         <div className="mt-8 grid gap-3">
           {levels.map((l) => (
