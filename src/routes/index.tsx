@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Flame,
   Layers3,
-  Lightbulb,
   Languages,
   PencilLine,
   SlidersHorizontal,
@@ -15,10 +14,11 @@ import {
 } from "lucide-react";
 import { CoursePath } from "@/components/CoursePath";
 import { lessons } from "@/lib/content";
-import { pendingModule } from "@/lib/curriculum";
+import { CoachBridge } from "@/components/CoachBridge";
+import { StudyPlan } from "@/components/StudyPlan";
 import { currentStreak, dueWords, studiedWords } from "@/lib/learning";
 import { dailyProgress } from "@/lib/motivation";
-import { STEPS, useAppState } from "@/lib/store";
+import { useAppState } from "@/lib/store";
 import { BottomNav, Brand, LessonArtwork, SectionHeading } from "@/components/TrainingUI";
 
 export const Route = createFileRoute("/")({
@@ -78,10 +78,6 @@ function Home() {
       </main>
     );
 
-  const pending = pendingModule(state);
-  const finished = state.day > lessons.length && !pending;
-  const lesson = lessons[Math.min(state.day - 1, lessons.length - 1)]!;
-  const done = STEPS.filter((step) => state.steps[`${state.day}:${step}`]).length;
   const due = dueWords(state).length;
   const studied = studiedWords(state).length;
   const daily = dailyProgress(state);
@@ -175,84 +171,9 @@ function Home() {
           </p>
         </section>
       )}
-      <SectionHeading title="Твоя следующая миссия" />
-      <section className="mission-card">
-        <div className="mission-top">
-          <div>
-            <p className="mission-tag">
-              {pending
-                ? `Экзамен модуля ${pending.id}`
-                : due
-                  ? "Время закрепить"
-                  : finished
-                    ? "Все истории пройдены"
-                    : `Разговорная миссия ${String(state.day).padStart(2, "0")}`}
-            </p>
-            <h2>
-              {pending
-                ? `Закрепим модуль «${pending.title}»`
-                : due
-                  ? "Вспомним знакомое"
-                  : finished
-                    ? "Практика продолжается"
-                    : lesson.titleRu}
-            </h2>
-            <p className="mission-description">
-              {pending
-                ? "Проверим память, понимание фраз и грамматику. Нужно 80%, чтобы завершить модуль и двигаться дальше."
-                : due
-                  ? "Самое время освежить знакомые слова в памяти."
-                  : finished
-                    ? "Повторяй карточки, проходи недельную проверку и возвращайся к миссиям, чтобы английский оставался живым."
-                    : lesson.title}
-            </p>
-          </div>
-          <LessonArtwork day={pending ? pending.endDay : due ? 3 : state.day} />
-        </div>
-        <div className="mission-meta">
-          <span>
-            <Layers3 size={14} aria-hidden="true" />
-            {pending
-              ? "Слова · фразы · понимание"
-              : due
-                ? `Карточек: ${due}`
-                : `${lesson.words.length} слов · 6 этапов`}
-          </span>
-          <span>
-            <Zap size={14} aria-hidden="true" />
-            {pending
-              ? "Проходной результат: 80%"
-              : due
-                ? "Укрепляем память"
-                : finished
-                  ? "Долгий маршрут"
-                  : "До 60 XP за урок"}
-          </span>
-        </div>
-        {!pending && !due && !finished && (
-          <div className="mission-progress" aria-label={`Пройдено ${done} из 6 этапов`}>
-            {STEPS.map((step) => (
-              <span key={step} className={state.steps[`${state.day}:${step}`] ? "done" : ""} />
-            ))}
-          </div>
-        )}
-        {pending ? (
-          <Link to="/lesson" search={{ module: pending.id }} className="btn-primary">
-            Пройти экзамен модуля <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-        ) : finished && !due ? (
-          <Link to="/weekly" className="btn-primary">
-            Проверить себя <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-        ) : (
-          <Link to="/lesson" search={{ review: due ? true : undefined }} className="btn-primary">
-            {due ? "Закрепить слова" : done ? "Продолжить урок" : "Начать урок"}
-            <ArrowRight size={18} aria-hidden="true" />
-          </Link>
-        )}
-      </section>
+      <StudyPlan state={state} />
       <section id="practice" className="scroll-mt-6">
-        <SectionHeading title="На что есть настроение?" aside={<span>Короткая практика</span>} />
+        <SectionHeading title="Практика" aside={<span>Выбери навык</span>} />
         <div className="practice-grid">
           <Link to="/lesson" search={{ review: true }} className="practice-card">
             <div className="practice-icon">
@@ -320,22 +241,13 @@ function Home() {
           </Link>
         </div>
       </section>
-      <SectionHeading
-        title="Твой разговорный маршрут"
-        aside={
-          <span>
-            {Math.min(state.day - 1, lessons.length)}/{lessons.length} пройдено
-          </span>
-        }
-      />
-      <CoursePath state={state} />
-      <div className="coach-note">
-        <Lightbulb size={19} aria-hidden="true" />
-        <p>
-          Сначала попробуй вспомнить, потом смотри ответ. Ошибка — это подсказка, что повторить, а
-          не повод остановиться.
-        </p>
-      </div>
+      <CoachBridge state={state} />
+      <details className="course-disclosure">
+        <summary>
+          Курс · {Math.min(state.day - 1, lessons.length)} из {lessons.length} миссий
+        </summary>
+        <CoursePath state={state} />
+      </details>
       <BottomNav />
     </main>
   );
