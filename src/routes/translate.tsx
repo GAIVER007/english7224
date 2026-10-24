@@ -7,13 +7,9 @@ export const Route = createFileRoute("/translate")({
 });
 function TranslatePage() {
   return (
-    <main className="app-shell">
+    <main className="app-shell translator-shell">
       <TrainingHeader title="Быстрый перевод" detail="Русский ↔ English" />
-      <h1 className="page-title mb-5">
-        Нужное слово.
-        <br />
-        <span>Прямо сейчас.</span>
-      </h1>
+      <h1 className="translator-title">Переводи без пауз</h1>
       <QuickTranslator />
       <BottomNav active="translate" />
     </main>

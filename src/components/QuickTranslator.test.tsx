@@ -88,8 +88,21 @@ it("supports manual direction and swaps the actual translated text", async () =>
   fireEvent.click(screen.getByRole("button", { name: "Поменять языки местами" }));
   await settle();
   expect(screen.getByRole("textbox")).toHaveValue("Привет");
-  expect(screen.getByLabelText("С какого языка")).toHaveValue("ru");
+  expect(screen.getByRole("radio", { name: "Русский" })).toBeChecked();
   expect(requestTranslation).toHaveBeenLastCalledWith("Привет", "ru", expect.any(AbortSignal));
+});
+it("switches language with radio controls and restores automatic detection", async () => {
+  vi.mocked(requestTranslation).mockResolvedValue(translated("Hello"));
+  render(<QuickTranslator />);
+  expect(screen.getByRole("radio", { name: "Определять автоматически" })).toBeChecked();
+  fireEvent.click(screen.getByRole("radio", { name: "Английский" }));
+  type("Привет");
+  await settle();
+  expect(requestTranslation).toHaveBeenLastCalledWith("Привет", "en", expect.any(AbortSignal));
+  fireEvent.click(screen.getByRole("radio", { name: "Определять автоматически" }));
+  await settle();
+  expect(requestTranslation).toHaveBeenLastCalledWith("Привет", "ru", expect.any(AbortSignal));
+  expect(screen.getByRole("radio", { name: "Английский" })).not.toBeChecked();
 });
 it("shows local model failures, retries explicitly, and rejects non-language input", async () => {
   vi.mocked(requestTranslation)

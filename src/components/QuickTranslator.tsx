@@ -94,22 +94,33 @@ export function QuickTranslator() {
   return (
     <>
       <OfflineModels key={modelCheck} onReady={setModelsReady} />
-      <div className="flex items-center gap-3 mb-4">
-        <label className="flex-1 text-sm font-bold" htmlFor="translation-mode">
-          С какого языка
-          <select
-            id="translation-mode"
-            className="input-field w-full mt-2"
-            value={mode}
-            onChange={(event) => setMode(event.target.value as TranslationMode)}
-          >
-            <option value="auto">Определить автоматически</option>
-            <option value="ru">Русский</option>
-            <option value="en">Английский</option>
-          </select>
-        </label>
+      <div className="translation-language-row">
+        <fieldset className="translation-languages">
+          <legend>С какого языка</legend>
+          <div className="language-options">
+            {(
+              [
+                ["auto", "Авто", "Определять автоматически"],
+                ["ru", "RU", "Русский"],
+                ["en", "EN", "Английский"],
+              ] as const
+            ).map(([value, title, label]) => (
+              <label className="language-choice" key={value}>
+                <input
+                  type="radio"
+                  name="translation-mode"
+                  value={value}
+                  checked={mode === value}
+                  onChange={() => setMode(value)}
+                  aria-label={label}
+                />
+                <span>{title}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <button
-          className="icon-button mt-7 shrink-0"
+          className="icon-button translation-swap"
           aria-label="Поменять языки местами"
           onClick={() => {
             setMode(target);
@@ -120,7 +131,12 @@ export function QuickTranslator() {
           <ArrowRightLeft size={20} aria-hidden="true" />
         </button>
       </div>
-      <section className="card-soft p-5" aria-labelledby="source-title">
+      <p className="translation-direction">
+        {mode === "auto" && !trimmed
+          ? "Определим язык по тексту"
+          : `${labels[source]} → ${labels[target]}`}
+      </p>
+      <section className="card-soft translation-panel" aria-labelledby="source-title">
         <div className="flex justify-between items-center gap-2">
           <label id="source-title" htmlFor="translation-text" className="font-bold">
             {trimmed ? labels[source] : "Твой текст"}
@@ -172,7 +188,7 @@ export function QuickTranslator() {
         ввода. Смешанную фразу лучше перевести с выбранного языка.
       </p>
       <section
-        className="card-soft translation-result p-5 mt-5"
+        className="card-soft translation-result translation-panel mt-5"
         aria-labelledby="translation-title"
         aria-busy={loading}
       >
