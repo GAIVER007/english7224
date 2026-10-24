@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import {
   ArrowRight,
   ChevronRight,
@@ -7,7 +6,6 @@ import {
   Layers3,
   Languages,
   PencilLine,
-  SlidersHorizontal,
   Sparkles,
   Trophy,
   Zap,
@@ -17,7 +15,7 @@ import { lessons } from "@/lib/content";
 import { CoachBridge } from "@/components/CoachBridge";
 import { StudyPlan } from "@/components/StudyPlan";
 import { currentStreak, dueWords, studiedWords } from "@/lib/learning";
-import { dailyProgress } from "@/lib/motivation";
+import { WeeklyRhythm } from "@/components/WeeklyRhythm";
 import { useAppState } from "@/lib/store";
 import { BottomNav, Brand, LessonArtwork, SectionHeading } from "@/components/TrainingUI";
 
@@ -35,8 +33,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { state, update, ready } = useAppState();
-  const [editGoal, setEditGoal] = useState(false);
+  const { state, ready } = useAppState();
   if (!ready)
     return (
       <main className="app-shell" role="status">
@@ -80,7 +77,6 @@ function Home() {
 
   const due = dueWords(state).length;
   const studied = studiedWords(state).length;
-  const daily = dailyProgress(state);
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -97,80 +93,8 @@ function Home() {
         </div>
       </header>
       <p className="eyebrow">Твой английский, твой ритм</p>
-      <h1 className="page-title">
-        {daily.completed ? (
-          <>
-            Хороший день
-            <br />
-            <span>для английского.</span>
-          </>
-        ) : (
-          <>
-            Английский
-            <br />
-            <span>в твоём ритме.</span>
-          </>
-        )}
-      </h1>
-      <p className="subcopy">
-        {daily.completed
-          ? "Цель выполнена. Можно отдохнуть или пойти дальше."
-          : "Одна короткая тренировка — и ты уже ближе к свободному разговору."}
-      </p>
-      <section className="goal-card" aria-label="Цель на день">
-        <div className="goal-ring">
-          <svg viewBox="0 0 60 60" aria-hidden="true">
-            <circle cx="30" cy="30" r="25" fill="none" stroke="var(--muted)" strokeWidth="5" />
-            <circle
-              cx="30"
-              cy="30"
-              r="25"
-              fill="none"
-              stroke="var(--primary)"
-              strokeWidth="5"
-              strokeLinecap="round"
-              strokeDasharray={`${daily.percent * 1.571} 157.1`}
-            />
-          </svg>
-          <span>
-            {Math.min(daily.count, daily.goal)}/{daily.goal}
-          </span>
-        </div>
-        <div>
-          <h2>{daily.completed ? "Цель дня выполнена!" : "Твоя цель на сегодня"}</h2>
-          <p>
-            {daily.goal} {daily.goal === 3 ? "учебных действия" : "учебных действий"} · без спешки
-          </p>
-        </div>
-        <button
-          className="goal-edit"
-          aria-label="Изменить дневную цель"
-          aria-expanded={editGoal}
-          onClick={() => setEditGoal(!editGoal)}
-        >
-          <SlidersHorizontal size={18} aria-hidden="true" />
-        </button>
-      </section>
-      {editGoal && (
-        <section className="goal-picker">
-          <h2 className="text-sm font-bold">Какой ритм тебе подходит?</h2>
-          <div className="goal-options">
-            {([3, 5, 10] as const).map((goal) => (
-              <button
-                key={goal}
-                aria-pressed={daily.goal === goal}
-                onClick={() => update((s) => ({ ...s, dailyGoal: goal }))}
-              >
-                {goal} {goal === 3 ? "действия" : "действий"}
-              </button>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Одно действие — завершённый этап урока или первая попытка ответа на вопрос в отдельной
-            практике. Повторы ошибок не считаются дважды.
-          </p>
-        </section>
-      )}
+      <h1 className="page-title">Практика, которая остаётся с тобой.</h1>
+      <WeeklyRhythm state={state} />
       <StudyPlan state={state} />
       <section id="practice" className="scroll-mt-6">
         <SectionHeading title="Практика" aside={<span>Выбери навык</span>} />

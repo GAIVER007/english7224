@@ -5,8 +5,14 @@ import { isRecallAnswerCorrect } from "@/lib/recall";
 import { speak, type AppState } from "@/lib/store";
 import { isSpeechSynthesisAvailable } from "@/lib/speech";
 
-type Mode = "dictation" | "retell" | "dialogue";
+type Mode = "dictation" | "retell" | "dialogue" | "fluency";
+import type { PracticeSkill } from "@/lib/practice-balance";
 const MODES: { id: Mode; title: string; description: string }[] = [
+  {
+    id: "fluency",
+    title: "Говорить свободнее",
+    description: "Расскажи знакомую историю трижды: точнее, связнее, увереннее.",
+  },
   {
     id: "dictation",
     title: "Аудиодиктант",
@@ -24,7 +30,13 @@ const MODES: { id: Mode; title: string; description: string }[] = [
   },
 ];
 
-export function SkillPractice({ state, onDone }: { state: AppState; onDone: () => void }) {
+export function SkillPractice({
+  state,
+  onDone,
+}: {
+  state: AppState;
+  onDone: (skill: PracticeSkill) => void;
+}) {
   const available = lessons.filter((lesson) => state.steps[`${lesson.day}:test`]);
   const [day, setDay] = useState(available[available.length - 1]?.day ?? 0);
   const [mode, setMode] = useState<Mode | null>(null);
@@ -33,7 +45,7 @@ export function SkillPractice({ state, onDone }: { state: AppState; onDone: () =
   const finish = () => {
     if (finished.current) return;
     finished.current = true;
-    onDone();
+    onDone(mode === "dictation" ? "input" : mode === "fluency" ? "fluency" : "output");
   };
   if (!lesson)
     return (
@@ -83,7 +95,9 @@ export function SkillPractice({ state, onDone }: { state: AppState; onDone: () =
             К выбору тренировки
           </button>
           <p className="eyebrow mb-3">{lesson.titleRu}</p>
-          {mode === "dictation" ? (
+          {mode === "fluency" ? (
+            <Fluency lesson={lesson} onDone={finish} />
+          ) : mode === "dictation" ? (
             <Dictation lesson={lesson} onDone={finish} />
           ) : mode === "retell" ? (
             <Retell lesson={lesson} onDone={finish} />
@@ -410,6 +424,66 @@ export function Dialogue({ lesson, onDone }: { lesson: Lesson; onDone: () => voi
           </button>
         </div>
       )}
+    </section>
+  );
+}
+
+export function Fluency({ lesson, onDone }: { lesson: Lesson; onDone: () => void }) {
+  const [round, setRound] = useState(0);
+  const [spoken, setSpoken] = useState(false);
+  const [notes, setNotes] = useState("");
+  const finished = useRef(false);
+  const stages = ["Вспомни ситуацию", "Расскажи связнее", "Расскажи без опоры"];
+  return (
+    <section className="card-soft p-5">
+      <p className="eyebrow">Повторный рассказ · {round + 1} из 3</p>
+      <h2 className="text-2xl font-bold">{stages[round]}</h2>
+      <p className="subcopy mt-3">
+        {round === 0
+          ? "Расскажи вслух знакомую ситуацию в 3–5 предложениях. Кто участвовал, чего хотел и чем всё закончилось?"
+          : round === 1
+            ? "Повтори ту же историю. Свяжи предложения: first, then, because, finally. Сохрани смысл, не добавляй сложность."
+            : "Расскажи ту же историю ещё раз без заметок. Старайся делать меньше пауз, но не жертвуй понятностью."}
+      </p>
+      {round < 2 && (
+        <>
+          <label htmlFor="fluency-notes" className="block mt-4 mb-2">
+            Опорные слова (необязательно)
+          </label>
+          <textarea
+            id="fluency-notes"
+            className="input-field w-full"
+            rows={3}
+            maxLength={300}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="3–5 знакомых английских слов"
+          />
+        </>
+      )}
+      <label className="flex gap-3 items-center min-h-12 my-4">
+        <input type="checkbox" checked={spoken} onChange={(e) => setSpoken(e.target.checked)} />Я
+        рассказал вслух
+      </label>
+      <button
+        className="btn-primary w-full"
+        disabled={!spoken}
+        onClick={() => {
+          if (round < 2) {
+            setRound(round + 1);
+            setSpoken(false);
+          } else if (!finished.current) {
+            finished.current = true;
+            onDone();
+          }
+        }}
+      >
+        {round < 2 ? "Следующий рассказ" : "Завершить практику беглости"}
+      </button>
+      <p className="text-xs text-muted-foreground mt-4">
+        Тема: {lesson.titleRu}. Это самостоятельная практика: приложение не оценивает произношение
+        или скорость. Заметки не сохраняются.
+      </p>
     </section>
   );
 }

@@ -51,6 +51,8 @@ export function completeStep(state: AppState, day: number, step: Step): AppState
       steps: { ...state.steps, [key]: true },
       day: step === "test" ? day + 1 : day,
     }),
+    Date.now(),
+    step === "dialogue" ? "input" : step === "speaking" ? "output" : "language",
   );
 }
 

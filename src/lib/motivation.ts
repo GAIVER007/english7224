@@ -1,3 +1,4 @@
+import type { PracticeSkill } from "./practice-balance";
 import type { AppState, DailyGoal } from "./store";
 import { personalRating } from "./rating";
 
@@ -60,12 +61,20 @@ export function localDateKey(now: number | Date = Date.now()): string {
 }
 
 /** Records one meaningful practice action. Callers decide what counts as one action. */
-export function recordPractice(state: AppState, now: number | Date = Date.now()): AppState {
+export function recordPractice(
+  state: AppState,
+  now: number | Date = Date.now(),
+  skill: PracticeSkill = "language",
+): AppState {
   const date = localDateKey(now);
   const activity = state.activity ?? {};
   return {
     ...state,
     activity: { ...activity, [date]: (activity[date] ?? 0) + 1 },
+    practiceSkills: {
+      ...state.practiceSkills,
+      [date]: [...new Set([...(state.practiceSkills?.[date] ?? []), skill])],
+    },
   };
 }
 

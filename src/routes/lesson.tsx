@@ -445,8 +445,8 @@ function SkillSession({ state, update }: SessionProps) {
       <TrainingHeader title="Лаборатория речи" detail="Слушай, вспоминай, отвечай" />
       <SkillPractice
         state={state}
-        onDone={() => {
-          update((s) => recordPractice(touchStreak(s)));
+        onDone={(skill) => {
+          update((s) => recordPractice(touchStreak(s), Date.now(), skill));
           void nav({ to: "/" });
         }}
       />

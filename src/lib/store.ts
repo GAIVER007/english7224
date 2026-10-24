@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { z } from "zod";
+import { PRACTICE_SKILLS, type PracticeSkill } from "./practice-balance";
 import { lessons, type Level } from "./content";
 import { courseModules } from "./curriculum";
 import { BADGE_IDS, earnedBadgeIdsForState, type BadgeId } from "./motivation";
@@ -35,7 +36,8 @@ export interface AppState {
   steps: Record<string, boolean>; // `${day}:${step}`
   cards: Record<string, CardState>;
   weakAreas: Record<string, number>;
-  dailyGoal?: DailyGoal;
+  dailyGoal?: DailyGoal; // Legacy backup compatibility; no longer a learner-facing target.
+  practiceSkills?: Record<string, PracticeSkill[]>;
   activity?: Record<string, number>;
   earnedBadgeIds?: BadgeId[];
   weeklyResult?: WeeklyResult;
@@ -56,6 +58,7 @@ export function createInitialState(): AppState {
     cards: {},
     weakAreas: {},
     dailyGoal: 5,
+    practiceSkills: {},
     activity: {},
     earnedBadgeIds: [],
     examResults: {},
@@ -142,9 +145,14 @@ const fieldSchemas = {
   earnedBadgeIds: z.array(z.enum(BADGE_IDS)),
   examResults: examResultsSchema,
   grammarHistory: z.array(z.boolean()).max(100),
+  practiceSkills: z.record(
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    z.array(z.enum(PRACTICE_SKILLS)).max(4),
+  ),
 } satisfies Record<keyof Omit<AppState, "weeklyResult">, z.ZodTypeAny>;
 const migratedDefaultFields = new Set([
   "dailyGoal",
+  "practiceSkills",
   "activity",
   "earnedBadgeIds",
   "examResults",

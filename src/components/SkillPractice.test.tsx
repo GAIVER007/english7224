@@ -75,3 +75,21 @@ it("lets a learner give a different dialogue response without declaring it wrong
   expect(screen.getByText("Один из вариантов")).toBeInTheDocument();
   expect(screen.getByText(/Автоматической оценки свободного ответа/)).toBeInTheDocument();
 });
+
+it("requires three separate spoken attempts before fluency completion", () => {
+  const done = vi.fn();
+  render(
+    <SkillPractice state={{ ...createInitialState(), steps: { "1:test": true } }} onDone={done} />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: /Говорить свободнее/ }));
+  for (let round = 0; round < 3; round++) {
+    const button = screen.getByRole("button", {
+      name: round < 2 ? "Следующий рассказ" : "Завершить практику беглости",
+    });
+    expect(button).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Я рассказал вслух" }));
+    fireEvent.click(button);
+  }
+  expect(done).toHaveBeenCalledExactlyOnceWith("fluency");
+  expect(screen.queryByLabelText("Опорные слова (необязательно)")).not.toBeInTheDocument();
+});
