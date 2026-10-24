@@ -24,6 +24,7 @@ import { canOpenStep, completeStep, dueWords, studiedWords, wordPool } from "@/l
 import { WordQuiz } from "@/components/WordQuiz";
 import { SpeakingPractice } from "@/components/SpeakingPractice";
 import { mistakeWords } from "@/lib/mistakes";
+import { SkillPractice } from "@/components/SkillPractice";
 
 export const Route = createFileRoute("/lesson")({
   validateSearch: (
@@ -32,9 +33,11 @@ export const Route = createFileRoute("/lesson")({
     review?: boolean | undefined;
     recall?: boolean | undefined;
     mistakes?: boolean | undefined;
+    training?: boolean | undefined;
     module?: number | undefined;
     practice?: number | undefined;
   } => ({
+    training: search["training"] === true || search["training"] === "true" ? true : undefined,
     module:
       Number.isInteger(Number(search["module"])) &&
       Number(search["module"]) >= 1 &&
@@ -73,6 +76,7 @@ function LessonPage() {
     module: moduleId,
     practice,
     mistakes,
+    training,
   } = Route.useSearch();
   if (!ready)
     return (
@@ -89,6 +93,7 @@ function LessonPage() {
         </Link>
       </main>
     );
+  if (training) return <SkillSession state={state} update={update} />;
   if (mistakes) return <RecallSession key="mistakes" state={state} update={update} mistakes />;
   if (recallOnly) return <RecallSession key="recall" state={state} update={update} />;
   if (reviewOnly) return <ReviewSession state={state} update={update} />;
@@ -408,6 +413,22 @@ function RecallSession({ state, update, mistakes = false }: SessionProps & { mis
           />
         )}
       </section>
+    </main>
+  );
+}
+
+function SkillSession({ state, update }: SessionProps) {
+  const nav = useNavigate();
+  return (
+    <main className="app-shell focus-shell">
+      <TrainingHeader title="Лаборатория речи" detail="Слушай, вспоминай, отвечай" />
+      <SkillPractice
+        state={state}
+        onDone={() => {
+          update((s) => recordPractice(touchStreak(s)));
+          void nav({ to: "/" });
+        }}
+      />
     </main>
   );
 }

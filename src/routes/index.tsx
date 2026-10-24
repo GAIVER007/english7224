@@ -277,6 +277,16 @@ function Home() {
             </span>
           </Link>
         </div>
+        <Link to="/lesson" search={{ training: true }} className="course-item mt-3">
+          <span className="course-icon">
+            <Languages size={24} aria-hidden="true" />
+          </span>
+          <div>
+            <h3>Лаборатория речи</h3>
+            <p>Аудиодиктант, пересказ и твоя реплика</p>
+          </div>
+          <ArrowRight size={18} aria-hidden="true" />
+        </Link>
         <Link to="/translate" className="course-item mt-3">
           <span className="practice-icon">
             <Languages size={24} aria-hidden="true" />
