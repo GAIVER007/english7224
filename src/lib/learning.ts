@@ -88,11 +88,16 @@ export function finishLessonExam(state: AppState, day: number, score: ExamScore)
     return state;
 
   const passed = passedExam(score);
+  const completedAt = Date.now();
   const withResult: AppState = {
     ...state,
+    resultHistory: [
+      ...(state.resultHistory ?? []),
+      { kind: "lesson", number: day, ...score, completedAt },
+    ],
     examResults: {
       ...(state.examResults ?? {}),
-      [lessonExamKey(day)]: { ...score, completedAt: Date.now(), passed },
+      [lessonExamKey(day)]: { ...score, completedAt, passed },
     },
   };
   return passed ? completeStep(withResult, day, "test") : withResult;
@@ -104,14 +109,20 @@ export function finishModuleExam(state: AppState, moduleId: number, score: ExamS
   const key = moduleExamKey(moduleId);
   const previous = state.examResults?.[key];
   const passed = passedExam(score);
-  if (previous?.passed && !passed) return state;
+  const completedAt = Date.now();
+  const resultHistory: NonNullable<AppState["resultHistory"]> = [
+    ...(state.resultHistory ?? []),
+    { kind: "module", number: moduleId, ...score, completedAt },
+  ];
+  if (previous?.passed && !passed) return { ...state, resultHistory };
 
   const next: AppState = {
     ...state,
     xp: state.xp + (passed && !previous?.passed ? 30 : 0),
+    resultHistory,
     examResults: {
       ...(state.examResults ?? {}),
-      [key]: { ...score, completedAt: Date.now(), passed },
+      [key]: { ...score, completedAt, passed },
     },
   };
   return passed && !previous?.passed ? recordPractice(touchStreak(next)) : next;

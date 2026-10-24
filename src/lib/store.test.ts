@@ -370,3 +370,58 @@ describe("streak", () => {
     }
   });
 });
+
+it("preserves rating, every history and backups across unmount and rehydration", async () => {
+  const { createBackup, parseBackup } = await import("./backup");
+  const { personalRating } = await import("./rating");
+  const state = {
+    ...createInitialState(),
+    level: "A2" as const,
+    day: 6,
+    xp: 330,
+    streak: 3,
+    steps: { "1:test": true, "1:speaking": true },
+    cards: { word: { box: 3, due: 123456, correct: 5, wrong: 1 } },
+    activity: { "2026-10-22": 3, "2026-10-23": 2, "2026-10-24": 5 },
+    practiceSkills: { "2026-10-24": ["fluency" as const, "input" as const] },
+    grammarHistory: [true, false, true],
+    examResults: { "module:1": { correct: 12, total: 15, completedAt: 100, passed: true } },
+    resultHistory: [
+      { kind: "module" as const, number: 1, correct: 10, total: 15, completedAt: 90 },
+      { kind: "module" as const, number: 1, correct: 12, total: 15, completedAt: 100 },
+    ],
+    weeklyResult: { completedAt: 110, correct: 6, total: 9, areas: {} },
+  };
+  const first = renderHook(() => useAppState());
+  act(() => restoreAppState(state));
+  const expected = first.result.current.state;
+  const rating = personalRating(expected);
+  const backup = createBackup(expected);
+  first.unmount();
+  const second = renderHook(() => useAppState());
+  await waitFor(() => expect(second.result.current.ready).toBe(true));
+  expect(second.result.current.state).toEqual(expected);
+  expect(personalRating(second.result.current.state)).toEqual(rating);
+  expect(parseBackup(backup).state).toEqual(expected);
+});
+
+it("ignores sessionStorage notifications so they cannot erase local progress", () => {
+  const hook = renderHook(() => useAppState());
+  act(() => hook.result.current.update((s) => ({ ...s, xp: 120 })));
+  act(() =>
+    window.dispatchEvent(new StorageEvent("storage", { key: null, storageArea: sessionStorage })),
+  );
+  expect(hook.result.current.state.xp).toBe(120);
+});
+
+it("rejects malformed result history before replacing saved progress", () => {
+  const hook = renderHook(() => useAppState());
+  act(() => hook.result.current.update((s) => ({ ...s, xp: 120 })));
+  expect(() =>
+    restoreAppState({
+      ...createInitialState(),
+      resultHistory: [{ kind: "module", number: 50, total: 15, correct: 20, completedAt: 1 }],
+    }),
+  ).toThrow(/resultHistory/);
+  expect(hook.result.current.state.xp).toBe(120);
+});

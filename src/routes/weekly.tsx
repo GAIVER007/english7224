@@ -210,14 +210,25 @@ function ExamSession({
               onClick={() => {
                 if (index + 1 === questions.length && !saved.current) {
                   saved.current = true;
+                  const result = {
+                    completedAt: Date.now(),
+                    correct: Object.values(score).reduce((sum, area) => sum + area.correct, 0),
+                    total: questions.length,
+                    areas: score,
+                  };
                   update((previous) => ({
                     ...previous,
-                    weeklyResult: {
-                      completedAt: Date.now(),
-                      correct: Object.values(score).reduce((sum, area) => sum + area.correct, 0),
-                      total: questions.length,
-                      areas: score,
-                    },
+                    weeklyResult: result,
+                    resultHistory: [
+                      ...(previous.resultHistory ?? []),
+                      {
+                        kind: "weekly",
+                        number: 0,
+                        completedAt: result.completedAt,
+                        correct: result.correct,
+                        total: result.total,
+                      },
+                    ],
                   }));
                 }
                 answered.current = false;

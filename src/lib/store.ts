@@ -25,6 +25,14 @@ export interface ExamResult {
   passed: boolean;
 }
 
+export interface ResultRecord {
+  kind: "lesson" | "module" | "weekly";
+  number: number;
+  completedAt: number;
+  correct: number;
+  total: number;
+}
+
 export type DailyGoal = 3 | 5 | 10;
 
 export interface AppState {
@@ -43,6 +51,7 @@ export interface AppState {
   weeklyResult?: WeeklyResult;
   examResults?: Record<string, ExamResult>;
   grammarHistory?: boolean[];
+  resultHistory?: ResultRecord[];
 }
 
 const KEY = "speakup-state-v1";
@@ -63,6 +72,7 @@ export function createInitialState(): AppState {
     earnedBadgeIds: [],
     examResults: {},
     grammarHistory: [],
+    resultHistory: [],
   };
 }
 
@@ -145,6 +155,26 @@ const fieldSchemas = {
   earnedBadgeIds: z.array(z.enum(BADGE_IDS)),
   examResults: examResultsSchema,
   grammarHistory: z.array(z.boolean()).max(100),
+  resultHistory: z.array(
+    z
+      .object({
+        kind: z.enum(["lesson", "module", "weekly"]),
+        number: nonNegativeInteger,
+        completedAt: nonNegativeInteger,
+        correct: nonNegativeInteger,
+        total: nonNegativeInteger.min(1),
+      })
+      .strict()
+      .refine(
+        (r) =>
+          r.correct <= r.total &&
+          (r.kind === "lesson"
+            ? r.number >= 1 && r.number <= lessons.length && r.total === 7
+            : r.kind === "module"
+              ? r.number >= 1 && r.number <= courseModules.length && r.total === 15
+              : r.number === 0 && r.total <= 9),
+      ),
+  ),
   practiceSkills: z.record(
     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     z.array(z.enum(PRACTICE_SKILLS)).max(4),
@@ -157,6 +187,7 @@ const migratedDefaultFields = new Set([
   "earnedBadgeIds",
   "examResults",
   "grammarHistory",
+  "resultHistory",
 ]);
 
 interface StoreSnapshot {
@@ -309,6 +340,7 @@ function persist(state: AppState): string | null {
 }
 
 function handleStorage(event: StorageEvent) {
+  if (event.storageArea && event.storageArea !== window.localStorage) return;
   if (event.key !== KEY && event.key !== null) return;
   const parsed = parseStoredState(event.key === null ? null : event.newValue);
   replaceSnapshot({

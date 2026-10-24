@@ -48,6 +48,9 @@ it("saves the completed result and includes the last answer", () => {
   expect(state.weeklyResult.total).toBe(3);
   expect(state.weeklyResult.correct).toBe(correct);
   expect(state.weeklyResult.completedAt).toBeGreaterThan(0);
+  expect(state.resultHistory).toEqual([
+    { kind: "weekly", number: 0, correct, total: 3, completedAt: state.weeklyResult.completedAt },
+  ]);
 });
 
 it("replaces runtime-failed audio without recording an invented mistake", () => {

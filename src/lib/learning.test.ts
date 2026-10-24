@@ -99,7 +99,9 @@ describe("module exams", () => {
 
     const passed = state;
     state = finishModuleExam(state, 1, { correct: 10, total: 15 });
-    expect(state).toBe(passed);
+    expect(state.xp).toBe(passed.xp);
+    expect(state.examResults).toEqual(passed.examResults);
+    expect(state.resultHistory).toHaveLength(3);
     state = finishModuleExam(state, 1, { correct: 15, total: 15 });
     expect(state.xp).toBe(130);
   });

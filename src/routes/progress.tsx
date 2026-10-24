@@ -10,6 +10,7 @@ import {
   Target,
   Trophy,
 } from "lucide-react";
+import { ResultHistory } from "@/components/ResultHistory";
 import { ProgressBackup } from "@/components/ProgressBackup";
 import { PersonalRating } from "@/components/PersonalRating";
 import { mistakeWords } from "@/lib/mistakes";
@@ -228,6 +229,7 @@ function Progress() {
           </Link>
         )}
       </section>
+      <ResultHistory records={state.resultHistory ?? []} />
       <SectionHeading title="Последняя проверка" />
       <section className="card-soft p-5">
         {state.weeklyResult ? (
