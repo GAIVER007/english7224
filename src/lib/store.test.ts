@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { earnedBadges } from "./motivation";
 import { createInitialState, resetAppState, review, touchStreak, useAppState } from "./store";
 
 afterEach(() => {
@@ -79,6 +80,9 @@ describe("shared app state", () => {
             xp: 80,
             day: "third",
             cards: [],
+            dailyGoal: 8,
+            activity: { "2026-10-24": "many" },
+            earnedBadgeIds: ["not-a-real-badge"],
             weeklyResult: { completedAt: 123, correct: 6, total: 5, areas: {} },
           }),
           storageArea: localStorage,
@@ -89,8 +93,39 @@ describe("shared app state", () => {
     expect(hook.result.current.state.xp).toBe(80);
     expect(hook.result.current.state.day).toBe(1);
     expect(hook.result.current.state.cards).toEqual({});
+    expect(hook.result.current.state.dailyGoal).toBe(5);
+    expect(hook.result.current.state.activity).toEqual({});
+    expect(hook.result.current.state.earnedBadgeIds).toEqual([]);
     expect(hook.result.current.state.weeklyResult).toBeUndefined();
     expect(hook.result.current.storageError).toContain("repaired");
+  });
+
+  it("migrates legacy progress to daily defaults without treating it as corrupt", async () => {
+    localStorage.setItem(
+      "speakup-state-v1",
+      JSON.stringify({
+        level: "A2",
+        day: 2,
+        xp: 60,
+        streak: 1,
+        lastActive: "Fri Oct 24 2026",
+        steps: { "1:test": true },
+        cards: {},
+        weakAreas: {},
+      }),
+    );
+
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+
+    expect(hook.result.current.state).toMatchObject({
+      day: 2,
+      xp: 60,
+      dailyGoal: 5,
+      activity: {},
+      earnedBadgeIds: ["first-lesson"],
+    });
+    expect(hook.result.current.storageError).toBeNull();
   });
 
   it("keeps in-memory state usable when localStorage writes fail", async () => {
@@ -106,6 +141,39 @@ describe("shared app state", () => {
     expect(hook.result.current.storageError).toContain("Quota exceeded");
   });
 
+  it("keeps earned badges after later updates reset streak and cards", async () => {
+    const hook = renderHook(() => useAppState());
+    await waitFor(() => expect(hook.result.current.ready).toBe(true));
+    const masteredCards = Object.fromEntries(
+      Array.from({ length: 10 }, (_, index) => [
+        `word-${index}`,
+        { box: 2, due: 0, correct: 2, wrong: 0 },
+      ]),
+    );
+
+    act(() =>
+      hook.result.current.update((state) => ({ ...state, streak: 3, cards: masteredCards })),
+    );
+    expect(hook.result.current.state.earnedBadgeIds).toEqual([
+      "ten-words",
+      "ten-mastered",
+      "streak-3",
+    ]);
+
+    act(() => hook.result.current.update((state) => ({ ...state, streak: 0, cards: {} })));
+
+    expect(hook.result.current.state.earnedBadgeIds).toEqual([
+      "ten-words",
+      "ten-mastered",
+      "streak-3",
+    ]);
+    expect(
+      earnedBadges(hook.result.current.state)
+        .filter((badge) => badge.earned)
+        .map((badge) => badge.id),
+    ).toEqual(["ten-words", "ten-mastered", "streak-3"]);
+  });
+
   it("resets only the app storage key", async () => {
     localStorage.setItem("unrelated", "keep");
     const hook = renderHook(() => useAppState());
@@ -117,6 +185,7 @@ describe("shared app state", () => {
     expect(localStorage.getItem("speakup-state-v1")).toBeNull();
     expect(localStorage.getItem("unrelated")).toBe("keep");
     expect(hook.result.current.state).toEqual(createInitialState());
+    expect(hook.result.current.state.earnedBadgeIds).toEqual([]);
     localStorage.removeItem("unrelated");
   });
 });

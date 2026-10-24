@@ -1,21 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import {
+  ArrowRight,
+  Check,
+  ChevronRight,
+  Flame,
+  Layers3,
+  Lightbulb,
+  LockKeyhole,
+  PencilLine,
+  SlidersHorizontal,
+  Sparkles,
+  Trophy,
+  Zap,
+} from "lucide-react";
+import { lessonIcons } from "@/lib/lesson-icons";
 import { lessons } from "@/lib/content";
 import { currentStreak, dueWords, studiedWords } from "@/lib/learning";
-import { STEPS, STEP_LABELS, useAppState } from "@/lib/store";
+import { dailyProgress } from "@/lib/motivation";
+import { STEPS, useAppState } from "@/lib/store";
+import { BottomNav, Brand, LessonArtwork, SectionHeading } from "@/components/TrainingUI";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SpeakUp — разговорный английский каждый день" },
+      { title: "SpeakUp — твоя ежедневная практика" },
       {
         name: "description",
-        content:
-          "Слово → фраза → диалог → практика. Ежедневные уроки разговорного английского с повторением.",
-      },
-      { property: "og:title", content: "SpeakUp — разговорный английский" },
-      {
-        property: "og:description",
-        content: "Ежедневные 20-минутные уроки: слова, фразы, диалоги, speaking.",
+        content: "Личный тренажёр английского: вспоминай, говори и замечай свой прогресс.",
       },
     ],
   }),
@@ -23,141 +35,289 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { state, ready } = useAppState();
+  const { state, update, ready } = useAppState();
+  const [editGoal, setEditGoal] = useState(false);
   if (!ready)
     return (
-      <main className="p-8" role="status">
-        Загружаем прогресс…
+      <main className="app-shell" role="status">
+        Готовим твою тренировку…
       </main>
     );
-
-  if (!state.level) {
+  if (!state.level)
     return (
-      <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6 py-16">
-        <p className="mb-4 text-sm font-bold uppercase tracking-widest text-primary">SpeakUp</p>
-        <h1 className="text-5xl font-semibold leading-tight md:text-6xl">
-          Не учите слова.
+      <main className="app-shell focus-shell">
+        <Brand />
+        <div className="onboarding-art">
+          <LessonArtwork day={3} />
+        </div>
+        <p className="eyebrow">Твоё место для практики</p>
+        <h1 className="page-title">
+          Маленькие шаги.
           <br />
-          Учитесь <em className="text-primary">говорить</em>.
+          <span>Большие разговоры.</span>
         </h1>
-        <p className="mt-6 text-lg text-muted-foreground">
-          Слово → фраза → ситуация → диалог → практика → повторение. Занимайтесь в удобном темпе.
+        <p className="subcopy">
+          Вспоминай слова, собирай фразы и говори вслух. Здесь можно ошибаться — так и появляется
+          уверенность.
         </p>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Стартовый курс: 5 уроков уровня A2. Прогресс сохраняется в этом браузере.
-        </p>
-        <div className="mt-10 flex flex-wrap gap-3">
+        <div className="onboarding-actions">
           <Link to="/placement" search={{ choose: undefined }} className="btn-primary">
-            Пройти тест уровня
+            Найти свою точку старта <ArrowRight size={18} aria-hidden="true" />
           </Link>
           <Link to="/placement" search={{ choose: true }} className="btn-ghost">
-            Выбрать уровень сам
+            Я уже знаю свой уровень
           </Link>
+        </div>
+        <div className="coach-note">
+          <Sparkles size={20} aria-hidden="true" />
+          <p>Начнём с пяти жизненных ситуаций уровня A2. Без регистрации, в твоём темпе.</p>
         </div>
       </main>
     );
-  }
 
   const finished = state.day > lessons.length;
   const lesson = lessons[Math.min(state.day - 1, lessons.length - 1)]!;
-  const done = STEPS.filter((s) => state.steps[`${state.day}:${s}`]).length;
-  const pct = Math.round((done / STEPS.length) * 100);
+  const done = STEPS.filter((step) => state.steps[`${state.day}:${step}`]).length;
   const due = dueWords(state).length;
   const studied = studiedWords(state).length;
-
+  const daily = dailyProgress(state);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <span className="font-display text-xl font-semibold">SpeakUp</span>
-        <div className="flex flex-wrap items-center gap-3 text-sm font-semibold">
-          <span>🔥 {currentStreak(state)}</span>
-          <span>⭐ {state.xp} XP</span>
-          <span className="rounded-full bg-secondary px-3 py-0.5 text-secondary-foreground">
-            {state.level}
+    <main className="app-shell">
+      <header className="topbar">
+        <Brand />
+        <div className="status-pills">
+          <span className="status-pill fire" aria-label={`Дней в серии: ${currentStreak(state)}`}>
+            <Flame size={15} aria-hidden="true" />
+            {currentStreak(state)}
           </span>
-          <Link to="/progress" className="underline-offset-4 hover:underline">
-            Прогресс
-          </Link>
+          <span className="status-pill">
+            <Zap size={15} className="text-primary" aria-hidden="true" />
+            {state.xp} XP
+          </span>
         </div>
       </header>
-
-      <p className="mt-6 text-sm text-muted-foreground">
-        Курс A2 · 5 уроков · Ваш ориентир: {state.level}. Прогресс хранится в этом браузере.{" "}
-        <Link to="/placement" search={{ choose: true }} className="underline">
-          Изменить уровень
-        </Link>
+      <p className="eyebrow">Твой английский, твой ритм</p>
+      <h1 className="page-title">
+        {daily.completed ? (
+          <>
+            Хорошая работа.
+            <br />
+            <span>Сегодня ты вырос.</span>
+          </>
+        ) : (
+          <>
+            Чуть больше практики.
+            <br />
+            <span>Чуть больше тебя.</span>
+          </>
+        )}
+      </h1>
+      <p className="subcopy">
+        {daily.completed
+          ? "Цель выполнена. Можно отдохнуть или пойти дальше."
+          : "Одна короткая тренировка — и ты уже ближе к свободному разговору."}
       </p>
-      {finished ? (
-        <section className="card-soft mt-8 p-6">
-          <h1 className="text-4xl font-semibold">Курс завершён!</h1>
-          <p className="mt-4">
-            Вы прошли все {lessons.length} уроков. Сохраняйте навык: повторяйте слова и пройдите
-            итоговую проверку.
-          </p>
-          <Link to="/weekly" className="btn-primary mt-6">
-            Итоговая проверка
-          </Link>
-        </section>
-      ) : (
-        <section className="card-soft mt-8 p-5 sm:p-8">
-          <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-            Урок {state.day} из {lessons.length}
-          </p>
-          <h1 className="mt-2 text-4xl font-semibold">{lesson.title}</h1>
-          <p className="text-muted-foreground">{lesson.titleRu}</p>
-          <div className="mt-6 h-3 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${pct}%` }}
+      <section className="goal-card" aria-label="Цель на день">
+        <div className="goal-ring">
+          <svg viewBox="0 0 60 60" aria-hidden="true">
+            <circle cx="30" cy="30" r="25" fill="none" stroke="var(--muted)" strokeWidth="5" />
+            <circle
+              cx="30"
+              cy="30"
+              r="25"
+              fill="none"
+              stroke="var(--primary)"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray={`${daily.percent * 1.571} 157.1`}
             />
-          </div>
-          <p className="mt-2 text-sm font-semibold">Прогресс дня: {pct}%</p>
-          <ul className="mt-6 grid grid-cols-2 gap-2 md:grid-cols-3">
-            {STEPS.map((s) => (
-              <li
-                key={s}
-                className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm font-medium"
+          </svg>
+          <span>
+            {Math.min(daily.count, daily.goal)}/{daily.goal}
+          </span>
+        </div>
+        <div>
+          <h2>{daily.completed ? "Цель дня выполнена!" : "Твоя цель на сегодня"}</h2>
+          <p>
+            {daily.goal} {daily.goal === 3 ? "учебных действия" : "учебных действий"} · без спешки
+          </p>
+        </div>
+        <button
+          className="goal-edit"
+          aria-label="Изменить дневную цель"
+          aria-expanded={editGoal}
+          onClick={() => setEditGoal(!editGoal)}
+        >
+          <SlidersHorizontal size={18} aria-hidden="true" />
+        </button>
+      </section>
+      {editGoal && (
+        <section className="goal-picker">
+          <h2 className="text-sm font-bold">Какой ритм тебе подходит?</h2>
+          <div className="goal-options">
+            {([3, 5, 10] as const).map((goal) => (
+              <button
+                key={goal}
+                aria-pressed={daily.goal === goal}
+                onClick={() => update((s) => ({ ...s, dailyGoal: goal }))}
               >
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${state.steps[`${state.day}:${s}`] ? "bg-success" : "bg-border"}`}
-                />
-                {STEP_LABELS[s]}
-              </li>
+                {goal} {goal === 3 ? "действия" : "действий"}
+              </button>
             ))}
-          </ul>
-          <Link to="/lesson" search={{ review: undefined }} className="btn-primary mt-8 w-full">
-            {done > 0 ? "Продолжить урок" : "Начать урок"}
-          </Link>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Одно действие — завершённый этап урока или первая попытка ответа на вопрос в отдельной
+            практике. Повторы ошибок не считаются дважды.
+          </p>
         </section>
       )}
-
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
-        <div className="card-soft p-6">
-          <p className="text-sm text-muted-foreground">К повторению</p>
-          <p className="font-display text-3xl font-semibold">{due} карточек</p>
-          <Link to="/lesson" search={{ review: true }} className="btn-ghost mt-4">
-            Открыть повторение
-          </Link>
+      <SectionHeading title="Следующий маленький шаг" />
+      <section className="mission-card">
+        <div className="mission-top">
+          <div>
+            <p className="mission-tag">
+              {due
+                ? "Время закрепить"
+                : finished
+                  ? "Все истории пройдены"
+                  : `Разговорная миссия 0${state.day}`}
+            </p>
+            <h2>{due ? "Вспомним знакомое" : finished ? "Теперь — в жизнь!" : lesson.titleRu}</h2>
+            <p className="mission-description">
+              {due
+                ? "Самое время освежить знакомые слова в памяти."
+                : finished
+                  ? "Проверь, что осталось в памяти, и продолжай говорить."
+                  : lesson.title}
+            </p>
+          </div>
+          <LessonArtwork day={due ? 3 : state.day} />
         </div>
-        <div className="card-soft p-6">
-          <p className="text-sm text-muted-foreground">Грамматика дня</p>
-          <p className="font-display text-2xl font-semibold">{lesson.grammar.title}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{lesson.grammar.rule}</p>
+        <div className="mission-meta">
+          <span>
+            <Layers3 size={14} aria-hidden="true" />
+            {due ? `Карточек: ${due}` : `${lesson.words.length} слов · 6 этапов`}
+          </span>
+          <span>
+            <Zap size={14} aria-hidden="true" />
+            {due ? "Укрепляем память" : finished ? "Проверка навыков" : "До 60 XP за урок"}
+          </span>
         </div>
-      </section>
-      <section className="card-soft mt-6 p-6">
-        <h2 className="text-2xl font-semibold">Проверка изученного</h2>
-        <p className="mt-2 text-muted-foreground">
-          Слова, фразы и аудирование по вашему материалу. Изучено слов: {studied}.
-        </p>
-        {studied > 0 ? (
-          <Link to="/weekly" className="btn-ghost mt-4">
-            Пройти проверку
+        {!due && !finished && (
+          <div className="mission-progress" aria-label={`Пройдено ${done} из 6 этапов`}>
+            {STEPS.map((step) => (
+              <span key={step} className={state.steps[`${state.day}:${step}`] ? "done" : ""} />
+            ))}
+          </div>
+        )}
+        {finished && !due ? (
+          <Link to="/weekly" className="btn-primary">
+            Проверить себя <ArrowRight size={18} aria-hidden="true" />
           </Link>
         ) : (
-          <p className="mt-3 text-sm">Проверка откроется после изучения первых слов.</p>
+          <Link to="/lesson" search={{ review: due ? true : undefined }} className="btn-primary">
+            {due ? "Закрепить слова" : done ? "Продолжить урок" : "Начать урок"}
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
         )}
       </section>
+      <section id="practice" className="scroll-mt-6">
+        <SectionHeading title="На что есть настроение?" aside={<span>Короткая практика</span>} />
+        <div className="practice-grid">
+          <Link to="/lesson" search={{ review: true }} className="practice-card">
+            <div className="practice-icon">
+              <Layers3 size={25} aria-hidden="true" />
+              <span className="text-xs font-bold">{due || "✓"}</span>
+            </div>
+            <h3>Не забыть</h3>
+            <p>{due ? `К повторению: ${due}` : "Всё закреплено на сейчас"}</p>
+            <span className="practice-link">
+              Карточки <ArrowRight size={14} aria-hidden="true" />
+            </span>
+          </Link>
+          <Link to="/lesson" search={{ recall: true }} className="practice-card peach">
+            <div className="practice-icon">
+              <PencilLine size={25} aria-hidden="true" />
+              <span className="text-xs font-bold">RU → EN</span>
+            </div>
+            <h3>Вспомнить самому</h3>
+            <p>{studied ? "Напиши без вариантов ответа" : "Откроется после первых слов"}</p>
+            <span className="practice-link">
+              Вызов памяти <ArrowRight size={14} aria-hidden="true" />
+            </span>
+          </Link>
+        </div>
+        <Link to="/weekly" className="course-item mt-3">
+          <span className="course-icon">
+            <Trophy size={22} aria-hidden="true" />
+          </span>
+          <div>
+            <h3>Проверить себя</h3>
+            <p>Слова, фразы и аудирование</p>
+          </div>
+          <ChevronRight size={18} aria-hidden="true" />
+        </Link>
+      </section>
+      <SectionHeading
+        title="Твой разговорный маршрут"
+        aside={
+          <span>
+            {Math.min(state.day - 1, lessons.length)}/{lessons.length} пройдено
+          </span>
+        }
+      />
+      <ol className="course-list">
+        {lessons.map((item, index) => {
+          const completed = item.day < state.day;
+          const current = item.day === state.day;
+          const Icon = lessonIcons[index]!;
+          return (
+            <li
+              key={item.day}
+              className={`course-item ${current ? "current" : completed ? "complete" : ""}`}
+            >
+              <span className="course-icon">
+                {completed ? (
+                  <Check size={22} aria-hidden="true" />
+                ) : (
+                  <Icon size={22} aria-hidden="true" />
+                )}
+              </span>
+              {current ? (
+                <Link to="/lesson" search={{ review: undefined }}>
+                  <div>
+                    <h3>{item.titleRu}</h3>
+                    <p>
+                      Миссия {item.day} · {done ? "Продолжим отсюда" : "Можно начинать"}
+                    </p>
+                  </div>
+                  <ChevronRight size={18} aria-hidden="true" />
+                </Link>
+              ) : (
+                <>
+                  <div>
+                    <h3>{item.titleRu}</h3>
+                    <p>
+                      {completed
+                        ? "Завершено · слова в повторении"
+                        : `Миссия ${item.day} · после предыдущей`}
+                    </p>
+                  </div>
+                  {!completed && <LockKeyhole size={16} aria-label="Пока закрыто" />}
+                </>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      <div className="coach-note">
+        <Lightbulb size={19} aria-hidden="true" />
+        <p>
+          Сначала попробуй вспомнить, потом смотри ответ. Ошибка — это подсказка, что повторить, а
+          не повод остановиться.
+        </p>
+      </div>
+      <BottomNav />
     </main>
   );
 }

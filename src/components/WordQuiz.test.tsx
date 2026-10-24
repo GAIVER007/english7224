@@ -31,7 +31,9 @@ it("requires a passing mini-test and permits a fresh attempt", () => {
   const words = wordPool.slice(0, 1);
   render(<WordQuiz requirePass words={words} pool={wordPool} onAnswer={vi.fn()} onDone={onDone} />);
   fireEvent.click(
-    screen.getAllByRole("button").find((button) => button.textContent !== words[0]!.ru)!,
+    screen
+      .getAllByRole("button")
+      .find((button) => button !== screen.getByRole("button", { name: words[0]!.ru }))!,
   );
   fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
   expect(onDone).not.toHaveBeenCalled();

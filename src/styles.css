@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "Fraunces", Georgia, serif;
+  --font-display: "Manrope", system-ui, sans-serif;
   --font-sans: "Manrope", system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -37,28 +37,31 @@
 
 :root {
   --radius: 1rem;
-  --background: oklch(0.97 0.015 85);
-  --foreground: oklch(0.22 0.03 250);
-  --card: oklch(0.995 0.005 85);
-  --card-foreground: oklch(0.22 0.03 250);
-  --popover: oklch(0.995 0.005 85);
-  --popover-foreground: oklch(0.22 0.03 250);
-  --primary: oklch(0.64 0.19 35);
-  --primary-foreground: oklch(0.99 0.01 85);
-  --secondary: oklch(0.28 0.05 250);
-  --secondary-foreground: oklch(0.97 0.015 85);
-  --muted: oklch(0.93 0.02 85);
-  --muted-foreground: oklch(0.5 0.03 250);
-  --accent: oklch(0.88 0.08 150);
-  --accent-foreground: oklch(0.25 0.05 160);
-  --success: oklch(0.62 0.14 155);
-  --warning: oklch(0.8 0.14 80);
-  --destructive: oklch(0.58 0.22 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.88 0.02 85);
-  --input: oklch(0.88 0.02 85);
-  --ring: oklch(0.64 0.19 35);
-  --shadow-card: 0 1px 0 oklch(0.22 0.03 250 / 6%), 0 12px 30px -16px oklch(0.22 0.03 250 / 25%);
+  --background: #f8f8fc;
+  --foreground: #242335;
+  --card: #ffffff;
+  --card-foreground: #242335;
+  --popover: #ffffff;
+  --popover-foreground: #242335;
+  --primary: #6350d6;
+  --primary-foreground: #ffffff;
+  --secondary: #302854;
+  --secondary-foreground: #ffffff;
+  --muted: #efedf6;
+  --muted-foreground: #696679;
+  --accent: #edf7db;
+  --accent-foreground: #39571f;
+  --success: #3e793a;
+  --warning: #e8a13a;
+  --destructive: #b9364f;
+  --destructive-foreground: #ffffff;
+  --border: #e5e2ee;
+  --input: #d4cedf;
+  --ring: #6350d6;
+  --lime: #d6f495;
+  --lavender: #eee9ff;
+  --peach: #fff0e6;
+  --shadow-card: 0 4px 18px #30285405;
 }
 
 @layer base {
@@ -92,8 +95,10 @@
   gap: 0.5rem;
   background: var(--primary);
   color: var(--primary-foreground);
-  border-radius: 999px;
-  padding: 0.85rem 1.6rem;
+  border-radius: 18px;
+  padding: 1rem 1.4rem;
+  min-height: 54px;
+  box-shadow: 0 4px 0 #4939ac;
   font-weight: 700;
   transition:
     transform 0.15s,
@@ -115,8 +120,9 @@
   gap: 0.5rem;
   border: 1px solid var(--border);
   background: var(--card);
-  border-radius: 999px;
-  padding: 0.6rem 1.2rem;
+  border-radius: 18px;
+  padding: 0.75rem 1.1rem;
+  min-height: 48px;
   font-weight: 600;
   &:hover {
     background: var(--muted);
@@ -128,7 +134,8 @@
   text-align: left;
   padding: 0.9rem 1.1rem;
   border-radius: var(--radius-lg);
-  border: 1.5px solid var(--border);
+  border: 2px solid var(--border);
+  min-height: 58px;
   background: var(--card);
   font-weight: 600;
   transition:
@@ -173,5 +180,829 @@
       transition: none !important;
       scroll-behavior: auto !important;
     }
+  }
+}
+
+/* Mobile training surfaces */
+@layer base {
+  html {
+    scroll-padding-bottom: 110px;
+  }
+  body {
+    margin: 0;
+    line-height: 1.55;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 800;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+  }
+  button:active:not(:disabled),
+  a.btn-primary:active {
+    transform: translateY(2px);
+  }
+  input {
+    font-size: 16px;
+  }
+  ::selection {
+    background: var(--lime);
+    color: var(--foreground);
+  }
+}
+.app-shell {
+  max-width: 520px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(24px, env(safe-area-inset-top)) 22px calc(112px + env(safe-area-inset-bottom));
+  background: var(--background);
+}
+.app-shell.focus-shell {
+  padding-bottom: max(40px, env(safe-area-inset-bottom));
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -1px;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: white;
+  margin-right: 8px;
+}
+.brand-dot {
+  color: var(--primary);
+}
+.status-pills {
+  display: flex;
+  gap: 8px;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 800;
+}
+.status-pill.fire {
+  color: #aa4d1a;
+  background: var(--peach);
+  border-color: #f5dfcb;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.page-title {
+  font-size: clamp(28px, 7.7vw, 36px);
+  line-height: 1.16;
+  letter-spacing: -1.3px;
+  margin: 8px 0 12px;
+}
+.page-title span {
+  color: var(--primary);
+}
+.subcopy {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.goal-card {
+  margin-top: 22px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background: white;
+  border: 1px solid var(--border);
+  padding: 17px;
+  border-radius: 22px;
+}
+.goal-ring {
+  position: relative;
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+}
+.goal-ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+.goal-ring span {
+  font-size: 13px;
+  font-weight: 800;
+}
+.goal-card h2 {
+  font-size: 14px;
+}
+.goal-card p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 3px;
+}
+.goal-edit {
+  margin-left: auto;
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 14px;
+  background: var(--lavender);
+}
+.goal-picker {
+  margin-top: 10px;
+  border-radius: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: white;
+}
+.goal-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.goal-options button {
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-weight: 750;
+}
+.goal-options button[aria-pressed="true"] {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--lavender);
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 28px 0 14px;
+}
+.section-heading h2 {
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+.section-heading > span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.mission-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 27px;
+  padding: 23px;
+  background: var(--secondary);
+  color: white;
+}
+.mission-top {
+  display: grid;
+  grid-template-columns: 1fr 132px;
+  align-items: center;
+  min-height: 150px;
+}
+.mission-tag {
+  color: var(--lime);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.mission-card h2 {
+  font-size: 29px;
+  line-height: 1.15;
+  margin: 12px 0 8px;
+  letter-spacing: -0.8px;
+}
+.mission-description {
+  color: #d8d2eb;
+  font-size: 13px;
+  max-width: 230px;
+}
+.mission-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  color: #d8d2eb;
+  margin-top: 18px;
+}
+.mission-meta span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.mission-card .btn-primary {
+  margin-top: 20px;
+  width: 100%;
+  background: var(--lime);
+  color: #27381b;
+  box-shadow: 0 4px 0 #aac86d;
+  font-size: 14px;
+}
+.mission-progress {
+  display: flex;
+  gap: 5px;
+  margin-top: 19px;
+}
+.mission-progress span {
+  height: 4px;
+  border-radius: 5px;
+  background: #5b517b;
+  flex: 1;
+}
+.mission-progress span.done {
+  background: var(--lime);
+}
+.lesson-art {
+  position: relative;
+  width: 132px;
+  height: 150px;
+  display: grid;
+  place-items: center;
+}
+.art-orbit {
+  position: absolute;
+  width: 132px;
+  height: 132px;
+  border: 1px solid #7966a5;
+  border-radius: 50%;
+}
+.art-ticket {
+  width: 86px;
+  height: 116px;
+  background: #ece5ff;
+  color: #6350d6;
+  transform: rotate(12deg);
+  border-radius: 15px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 10px;
+  box-shadow: 8px 8px 0 #241d42;
+}
+.ticket-label {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+.ticket-dashes {
+  width: 50px;
+  height: 9px;
+  border-top: 2px dashed #ae9ed3;
+}
+.art-bubble {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  background: var(--lime);
+  color: #302854;
+  font-size: 22px;
+  font-weight: 900;
+  padding: 6px 14px;
+  border-radius: 17px 17px 17px 3px;
+  transform: rotate(-10deg);
+}
+.art-spark {
+  position: absolute;
+  font-size: 24px;
+  color: var(--lime);
+}
+.art-spark-one {
+  right: -5px;
+  top: 1px;
+}
+.art-spark-two {
+  left: 4px;
+  top: 15px;
+  font-size: 14px;
+}
+.practice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.practice-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 166px;
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--lavender);
+  border: 1px solid #e0d8f6;
+}
+.practice-card.peach {
+  background: var(--peach);
+  border-color: #f3dfcf;
+}
+.practice-card .practice-icon {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+.practice-card.peach .practice-icon {
+  color: #a45029;
+}
+.practice-card h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.practice-card p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.practice-card .practice-link {
+  margin-top: auto;
+  font-size: 12px;
+  padding-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 800;
+}
+.course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.course-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 19px;
+  background: white;
+}
+.course-item.current {
+  border-color: #a89ce1;
+  background: #f3f0ff;
+}
+.course-icon {
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  border-radius: 15px;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  flex-shrink: 0;
+}
+.current .course-icon {
+  background: var(--primary);
+  color: white;
+}
+.course-item.complete .course-icon {
+  background: var(--accent);
+  color: var(--success);
+}
+.course-item h3 {
+  font-size: 14px;
+}
+.course-item p {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  margin-top: 3px;
+}
+.course-item > svg:last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.course-item a {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+}
+.coach-note {
+  display: flex;
+  gap: 12px;
+  padding: 16px 2px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.coach-note svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.bottom-nav {
+  position: fixed;
+  z-index: 20;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 520px);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #fffffff2;
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+}
+.bottom-nav a {
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 750;
+  color: var(--muted-foreground);
+  border-radius: 16px;
+}
+.bottom-nav a.is-selected {
+  color: var(--primary);
+  background: var(--lavender);
+}
+.training-header {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 24px;
+}
+.icon-button {
+  display: grid;
+  place-items: center;
+  min-width: 46px;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: white;
+}
+.mini-spark {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: var(--lavender);
+  color: var(--primary);
+  border-radius: 14px;
+}
+.step-nav {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+  margin: 18px 0;
+}
+.step-nav button {
+  min-height: 48px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.step-nav button[aria-current="step"] {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 3px 0 #4939ac;
+}
+.step-nav button.completed {
+  background: var(--accent);
+  color: var(--success);
+}
+.step-nav button:disabled {
+  opacity: 0.5;
+}
+.lesson-stage {
+  margin-top: 18px;
+  padding: 24px 20px;
+  border-radius: 24px;
+  background: white;
+  border: 1px solid var(--border);
+}
+.lesson-stage h2 {
+  font-size: 27px;
+  line-height: 1.25;
+}
+.word-card {
+  text-align: center;
+  padding: 8px 0;
+}
+.word-card h2 {
+  font-size: clamp(30px, 8vw, 44px);
+  margin-top: 22px;
+  letter-spacing: -1.5px;
+}
+.word-card .word-example {
+  text-align: left;
+  background: var(--lavender);
+  border-radius: 18px;
+  padding: 17px;
+  margin-top: 24px;
+}
+.word-card .word-example p:first-child {
+  font-weight: 700;
+  font-size: 15px;
+}
+.word-card .word-example p:last-child {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 7px;
+}
+.quiz-feedback {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 15px;
+  border-radius: 16px;
+  margin-top: 20px;
+  font-size: 14px;
+  font-weight: 650;
+}
+.quiz-feedback.correct {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.quiz-feedback.incorrect {
+  background: var(--peach);
+  color: #8b3b26;
+}
+.quiz-feedback svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.result-medallion {
+  width: 84px;
+  height: 84px;
+  border-radius: 28px;
+  background: var(--lime);
+  color: #365027;
+  display: grid;
+  place-items: center;
+  margin: 8px auto 24px;
+  transform: rotate(-7deg);
+  box-shadow: 5px 5px 0 #e7e1f7;
+}
+.quiz-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted-foreground);
+}
+.quiz-progress span {
+  color: var(--primary);
+  background: var(--lavender);
+  padding: 5px 10px;
+  border-radius: 10px;
+}
+.input-field {
+  width: 100%;
+  min-height: 56px;
+  border: 2px solid var(--input);
+  background: var(--background);
+  border-radius: 16px;
+  padding: 14px;
+  margin: 10px 0 14px;
+  color: var(--foreground);
+}
+.rank-card {
+  background: var(--secondary);
+  border-radius: 25px;
+  padding: 24px;
+  color: white;
+  margin-top: 24px;
+}
+.rank-top {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.rank-symbol {
+  width: 65px;
+  height: 65px;
+  background: var(--lime);
+  color: #302854;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.rank-card h2 {
+  font-size: 22px;
+  margin-top: 4px;
+}
+.rank-card p {
+  color: #d8d2eb;
+  font-size: 12px;
+}
+.meter {
+  height: 7px;
+  border-radius: 10px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: inherit;
+}
+.rank-card .meter {
+  background: #5b517b;
+  margin: 20px 0 8px;
+}
+.rank-card .meter > span {
+  background: var(--lime);
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.stat-tile {
+  text-align: center;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 19px;
+  padding: 16px 7px;
+}
+.stat-tile strong {
+  display: block;
+  font-size: 24px;
+  letter-spacing: -1px;
+}
+.stat-tile span {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.week-chart {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 9px;
+  padding-top: 20px;
+}
+.week-day {
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.week-track {
+  height: 74px;
+  background: var(--muted);
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.week-track span {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 10px;
+  background: #c1b4ef;
+}
+.week-day.today .week-track span {
+  background: var(--primary);
+}
+.week-day.today {
+  color: var(--primary);
+  font-weight: 800;
+}
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.badge-card {
+  border-radius: 19px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  background: white;
+}
+.badge-card.earned {
+  background: #f0f7e5;
+  border-color: #d8e9bf;
+}
+.badge-card svg {
+  color: #777084;
+  margin-bottom: 12px;
+}
+.badge-card.earned svg {
+  color: #497435;
+}
+.badge-card h3 {
+  font-size: 13px;
+}
+.badge-card p {
+  font-size: 11px;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+.onboarding-art {
+  background: var(--secondary);
+  border-radius: 32px;
+  display: grid;
+  place-items: center;
+  min-height: 230px;
+  margin: 32px 0;
+}
+.onboarding-art .lesson-art {
+  transform: scale(1.3);
+}
+.onboarding-actions {
+  display: grid;
+  gap: 14px;
+  margin-top: 30px;
+}
+@media (min-width: 600px) {
+  body {
+    background: #eae7f2;
+  }
+  .app-shell {
+    box-shadow: 0 0 80px #30285409;
+  }
+}
+@media (max-width: 360px) {
+  .app-shell {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .mission-card {
+    padding: 18px;
+  }
+  .mission-top {
+    grid-template-columns: 1fr 105px;
+  }
+  .lesson-art {
+    transform: scale(0.85);
+    transform-origin: center right;
+  }
+  .status-pill {
+    padding: 5px 7px;
+  }
+  .brand {
+    font-size: 20px;
+  }
+}
+
+.option-letter {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.lesson-stage {
+  animation: stage-appear 0.23s ease-out;
+}
+@keyframes stage-appear {
+  from {
+    opacity: 0.4;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-stage {
+    animation: none;
   }
 }

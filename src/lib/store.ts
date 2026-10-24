@@ -1,6 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { z } from "zod";
 import type { Level } from "./content";
+import { BADGE_IDS, earnedBadgeIdsForState, type BadgeId } from "./motivation";
 
 export interface CardState {
   box: number;
@@ -15,6 +16,8 @@ export interface WeeklyResult {
   areas: Record<string, { correct: number; total: number }>;
 }
 
+export type DailyGoal = 3 | 5 | 10;
+
 export interface AppState {
   level: Level | null;
   day: number;
@@ -24,6 +27,9 @@ export interface AppState {
   steps: Record<string, boolean>; // `${day}:${step}`
   cards: Record<string, CardState>;
   weakAreas: Record<string, number>;
+  dailyGoal?: DailyGoal;
+  activity?: Record<string, number>;
+  earnedBadgeIds?: BadgeId[];
   weeklyResult?: WeeklyResult;
 }
 
@@ -39,6 +45,9 @@ export function createInitialState(): AppState {
     steps: {},
     cards: {},
     weakAreas: {},
+    dailyGoal: 5,
+    activity: {},
+    earnedBadgeIds: [],
   };
 }
 
@@ -81,7 +90,11 @@ const fieldSchemas = {
   steps: z.record(z.boolean()),
   cards: z.record(cardSchema),
   weakAreas: z.record(finiteNumber.nonnegative()),
+  dailyGoal: z.union([z.literal(3), z.literal(5), z.literal(10)]),
+  activity: z.record(z.string().regex(/^\d{4}-\d{2}-\d{2}$/), nonNegativeInteger),
+  earnedBadgeIds: z.array(z.enum(BADGE_IDS)),
 } satisfies Record<keyof Omit<AppState, "weeklyResult">, z.ZodTypeAny>;
+const migratedDefaultFields = new Set(["dailyGoal", "activity", "earnedBadgeIds"]);
 
 interface StoreSnapshot {
   state: AppState;
@@ -115,6 +128,10 @@ function normalizeState(value: unknown): { state: AppState; repaired: boolean } 
   const normalized: Record<string, unknown> = { ...source };
   let repaired = false;
   for (const [field, schema] of Object.entries(fieldSchemas)) {
+    if (source[field] === undefined && migratedDefaultFields.has(field)) {
+      normalized[field] = defaults[field as keyof typeof defaults];
+      continue;
+    }
     const result = schema.safeParse(source[field]);
     if (result.success) normalized[field] = result.data;
     else {
@@ -130,7 +147,9 @@ function normalizeState(value: unknown): { state: AppState; repaired: boolean } 
       repaired = true;
     }
   }
-  return { state: normalized as unknown as AppState, repaired };
+  const state = normalized as unknown as AppState;
+  state.earnedBadgeIds = earnedBadgeIdsForState(state);
+  return { state, repaired };
 }
 
 function parseStoredState(raw: string | null): { state: AppState; repaired: boolean } {
@@ -216,8 +235,17 @@ function subscribe(listener: () => void) {
 export function updateAppState(fn: (state: AppState) => AppState) {
   ensureHydrated();
   const normalized = normalizeState(fn(snapshot.state));
-  const storageError = typeof window === "undefined" ? null : persist(normalized.state);
-  replaceSnapshot({ state: normalized.state, ready: true, storageError });
+  const state = {
+    ...normalized.state,
+    earnedBadgeIds: [
+      ...new Set([
+        ...(snapshot.state.earnedBadgeIds ?? []),
+        ...(normalized.state.earnedBadgeIds ?? []),
+      ]),
+    ],
+  };
+  const storageError = typeof window === "undefined" ? null : persist(state);
+  replaceSnapshot({ state, ready: true, storageError });
 }
 
 export function resetAppState() {

@@ -1,16 +1,27 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  ArrowRight,
+  Award,
+  Check,
+  Flame,
+  Leaf,
+  LockKeyhole,
+  Sparkles,
+  Target,
+  Trophy,
+} from "lucide-react";
 import { lessons } from "@/lib/content";
 import { AREA_LABELS, type Area } from "@/lib/exam";
 import { currentStreak, dueWords } from "@/lib/learning";
+import { earnedBadges, learnerRank, weeklyActivity } from "@/lib/motivation";
 import { resetAppState, useAppState } from "@/lib/store";
+import { BottomNav, SectionHeading, TrainingHeader } from "@/components/TrainingUI";
 
 export const Route = createFileRoute("/progress")({
   head: () => ({
     meta: [
-      { title: "Мой прогресс — SpeakUp" },
-      { name: "description", content: "Выученные слова, серия дней, XP и слабые места." },
-      { property: "og:title", content: "Мой прогресс — SpeakUp" },
-      { property: "og:description", content: "Статистика обучения разговорному английскому." },
+      { title: "Мой рост — SpeakUp" },
+      { name: "description", content: "Твоя практика, достижения и следующие шаги в английском." },
     ],
   }),
   component: Progress,
@@ -20,117 +31,219 @@ function Progress() {
   const { state, ready } = useAppState();
   if (!ready)
     return (
-      <main className="p-8" role="status">
-        Загружаем статистику…
+      <main className="app-shell" role="status">
+        Собираем твои достижения…
       </main>
     );
   const cards = Object.entries(state.cards);
-  const learned = cards.filter(([, c]) => c.box >= 2).length;
-  const allWords = lessons.flatMap((l) => l.words);
+  const learned = cards.filter(([, card]) => card.box >= 2).length;
+  const allWords = lessons.flatMap((lesson) => lesson.words);
   const weak = cards
-    .filter(([, c]) => c.wrong > 0)
+    .filter(([, card]) => card.wrong > 0)
     .sort((a, b) => b[1].wrong - a[1].wrong)
     .slice(0, 6);
-
+  const rank = learnerRank(state.xp);
+  const week = weeklyActivity(state);
+  const peak = Math.max(5, ...week.map((day) => day.count));
+  const badges = earnedBadges(state);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <Link to="/" className="text-sm font-semibold text-muted-foreground">
-        ← Назад
-      </Link>
-      <h1 className="mt-4 text-4xl font-semibold">Мой прогресс</h1>
-      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {[
-          ["Уровень", state.level ?? "—"],
-          ["Уроков пройдено", Math.min(state.day - 1, lessons.length)],
-          ["Серия", `🔥 ${currentStreak(state)}`],
-          ["XP", state.xp],
-          ["Слов в работе", cards.length],
-          ["Хорошо знаю", learned],
-        ].map(([k, v]) => (
-          <div key={k as string} className="card-soft p-5">
-            <p className="text-sm text-muted-foreground">{k}</p>
-            <p className="font-display text-3xl font-semibold">{v}</p>
+    <main className="app-shell">
+      <TrainingHeader title="Мой рост" detail="Каждая попытка имеет значение" />
+      <p className="eyebrow">Твоя личная история</p>
+      <h1 className="page-title">
+        Посмотри, как далеко
+        <br />
+        <span>ты уже продвинулся.</span>
+      </h1>
+      <section className="rank-card">
+        <div className="rank-top">
+          <div className="rank-symbol">
+            <Sparkles size={32} aria-hidden="true" />
           </div>
-        ))}
-      </div>
-      <section className="card-soft mt-6 p-6">
-        <h2 className="text-2xl font-semibold">Слабые места</h2>
-        {weak.length === 0 ? (
-          <p className="mt-2 text-muted-foreground">Пока ошибок нет — так держать.</p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {weak.map(([id, c]) => {
-              const w = allWords.find((x) => x.id === id);
-              return (
-                <li key={id} className="flex justify-between rounded-lg bg-muted px-4 py-2">
-                  <span className="font-semibold">{w?.en ?? id}</span>
-                  <span className="text-destructive">{c.wrong} ошибок</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-      <section className="card-soft mt-6 p-6">
-        <h2 className="text-2xl font-semibold">Последняя проверка</h2>
-        {state.weeklyResult ? (
-          <>
-            <p className="mt-3">
-              {state.weeklyResult.correct} из {state.weeklyResult.total} ·{" "}
-              {new Date(state.weeklyResult.completedAt).toLocaleDateString("ru-RU")}
-            </p>
-            <ul className="mt-3 space-y-2">
-              {Object.entries(state.weeklyResult.areas)
-                .filter(([, area]) => area.total > 0)
-                .map(([name, area]) => (
-                  <li key={name}>
-                    {AREA_LABELS[name as Area] ?? name}: {area.correct}/{area.total}
-                  </li>
-                ))}
-            </ul>
-          </>
-        ) : (
-          <p className="mt-3 text-muted-foreground">
-            Пройдите проверку после изучения первых слов.
+          <div>
+            <p>Ранг практики · {rank.level}</p>
+            <h2>{rank.title}</h2>
+          </div>
+        </div>
+        <div
+          className="meter"
+          role="progressbar"
+          aria-label="Прогресс игрового ранга"
+          aria-valuenow={rank.percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span style={{ width: `${rank.percent}%` }} />
+        </div>
+        <div className="flex justify-between gap-3">
+          <p>{state.xp} XP заработано</p>
+          <p>
+            {rank.level === 5
+              ? "Все ранги открыты. Продолжай закреплять слова!"
+              : `Следующий ранг: ${rank.neededXp} XP`}
           </p>
-        )}
-        <Link to="/weekly" className="btn-ghost mt-4">
-          Пройти проверку
-        </Link>
+        </div>
       </section>
-      <section className="card-soft mt-6 p-6">
-        <h2 className="text-2xl font-semibold">Ошибки по направлениям</h2>
-        {Object.keys(state.weakAreas).length ? (
-          <ul className="mt-3 space-y-2">
-            {Object.entries(state.weakAreas).map(([area, count]) => (
-              <li key={area}>
-                {AREA_LABELS[area as Area] ?? area}: {count}
+      <p className="mt-2 text-xs text-muted-foreground">
+        Ранг отражает практику, а не языковой уровень.
+      </p>
+      <div className="stats-grid">
+        <div className="stat-tile">
+          <Flame size={19} className="mx-auto mb-2 text-primary" aria-hidden="true" />
+          <strong>{currentStreak(state)}</strong>
+          <span>дней в серии</span>
+        </div>
+        <div className="stat-tile">
+          <Leaf size={19} className="mx-auto mb-2 text-success" aria-hidden="true" />
+          <strong>{learned}</strong>
+          <span>слов закреплено</span>
+        </div>
+        <div className="stat-tile">
+          <Check size={19} className="mx-auto mb-2 text-primary" aria-hidden="true" />
+          <strong>
+            {Math.min(state.day - 1, lessons.length)}/{lessons.length}
+          </strong>
+          <span>миссий пройдено</span>
+        </div>
+      </div>
+      <SectionHeading title="Понемногу, но регулярно" aside={<span>Последние 7 дней</span>} />
+      <section className="card-soft p-5">
+        <div className="flex justify-between items-center gap-3">
+          <h3 className="text-sm">
+            Учебных действий: {week.reduce((sum, day) => sum + day.count, 0)}
+          </h3>
+          <span className="text-xs text-muted-foreground">Твой ритм</span>
+        </div>
+        <div className="week-chart">
+          {week.map((day) => (
+            <div
+              key={day.date}
+              className={`week-day ${day.isToday ? "today" : ""}`}
+              aria-label={`${day.date}, действий: ${day.count}`}
+            >
+              <div className="week-track">
+                <span style={{ height: `${(day.count / peak) * 100}%` }} />
+              </div>
+              <span>{day.label}</span>
+              <span className="block mt-1 font-bold">{day.count}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+      <SectionHeading
+        title="Маленькие победы"
+        aside={
+          <span>
+            {badges.filter((badge) => badge.earned).length}/{badges.length}
+          </span>
+        }
+      />
+      <section className="badge-grid">
+        {badges.map((badge, index) => {
+          const Icon = [Sparkles, Flame, Leaf, Target, Award, Trophy][index % 6]!;
+          return (
+            <article key={badge.id} className={`badge-card ${badge.earned ? "earned" : ""}`}>
+              <div className="flex justify-between">
+                <Icon size={27} aria-hidden="true" />
+                {badge.earned ? (
+                  <Check size={15} aria-label="Получено" />
+                ) : (
+                  <LockKeyhole size={14} aria-label="Ещё не получено" />
+                )}
+              </div>
+              <h3>{badge.title}</h3>
+              <p>{badge.description}</p>
+            </article>
+          );
+        })}
+      </section>
+      <SectionHeading title="Дадим этим словам ещё шанс" />
+      <section className="card-soft p-5">
+        {weak.length ? (
+          <ul className="space-y-3">
+            {weak.map(([id, card]) => (
+              <li key={id} className="flex justify-between gap-3 items-center">
+                <div>
+                  <p className="text-sm font-bold">
+                    {allWords.find((word) => word.id === id)?.en ?? id}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {allWords.find((word) => word.id === id)?.ru}
+                  </p>
+                </div>
+                <span className="text-xs text-muted-foreground">Ошибок: {card.wrong}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-3 text-muted-foreground">Здесь появятся ошибки из проверок.</p>
+          <p className="subcopy">
+            Здесь появятся слова, которым нужно чуть больше внимания. Ошибаться — нормально.
+          </p>
         )}
-        <p className="mt-3 text-sm text-muted-foreground">
-          Счётчики показывают историю ошибок, а не текущую оценку уровня.
-        </p>
-        <Link to="/lesson" search={{ review: true }} className="btn-ghost mt-4">
-          Повторить слова ({dueWords(state).length})
+        <Link to="/lesson" search={{ review: true }} className="btn-ghost mt-5 w-full">
+          Повторить слова ({dueWords(state).length}) <ArrowRight size={16} aria-hidden="true" />
         </Link>
       </section>
-      <p className="mt-6 text-sm text-muted-foreground">
-        Данные сохранены только в этом браузере. Очистка данных браузера удалит прогресс.
-      </p>
-      <button
-        className="btn-ghost mt-8"
-        onClick={() => {
-          if (confirm("Сбросить весь прогресс?")) {
-            resetAppState();
-          }
-        }}
-      >
-        Сбросить прогресс
-      </button>
+      <SectionHeading title="Последняя проверка" />
+      <section className="card-soft p-5">
+        {state.weeklyResult ? (
+          <>
+            <div className="flex items-end justify-between gap-3">
+              <p className="text-3xl font-extrabold">
+                {state.weeklyResult.correct}
+                <span className="text-lg text-muted-foreground"> / {state.weeklyResult.total}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(state.weeklyResult.completedAt).toLocaleDateString("ru-RU")}
+              </p>
+            </div>
+            <div className="mt-4 space-y-3">
+              {Object.entries(state.weeklyResult.areas)
+                .filter(([, area]) => area.total > 0)
+                .map(([name, area]) => (
+                  <div key={name}>
+                    <p className="flex justify-between text-xs mb-2">
+                      <span>{AREA_LABELS[name as Area] ?? name}</span>
+                      <span>
+                        {area.correct}/{area.total}
+                      </span>
+                    </p>
+                    <div className="meter">
+                      <span style={{ width: `${(area.correct / area.total) * 100}%` }} />
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </>
+        ) : (
+          <p className="subcopy">
+            Короткая проверка покажет, что уже получается, а что стоит повторить.
+          </p>
+        )}
+        <Link to="/weekly" className="btn-ghost mt-5 w-full">
+          Проверить себя <ArrowRight size={16} aria-hidden="true" />
+        </Link>
+      </section>
+      <details className="card-soft mt-6 p-5">
+        <summary className="min-h-11 cursor-pointer font-bold text-sm">Мои настройки</summary>
+        <p className="subcopy mt-3">Ориентир: {state.level ?? "не выбран"}. Текущий курс — A2.</p>
+        <Link to="/placement" search={{ choose: true }} className="btn-ghost mt-3 w-full">
+          Изменить уровень
+        </Link>
+        <p className="mt-5 text-xs text-muted-foreground">
+          Прогресс живёт в этом браузере. Очистка его данных удалит достижения.
+        </p>
+        <button
+          className="btn-ghost mt-4 w-full text-destructive"
+          onClick={() => {
+            if (confirm("Сбросить весь прогресс и достижения? Это действие нельзя отменить."))
+              resetAppState();
+          }}
+        >
+          Сбросить прогресс
+        </button>
+      </details>
+      <BottomNav active="progress" />
     </main>
   );
 }

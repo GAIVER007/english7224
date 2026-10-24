@@ -1,5 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { ArrowRight, Check, LockKeyhole, Play, Volume2 } from "lucide-react";
+import { TrainingHeader } from "@/components/TrainingUI";
+import { RecallPractice } from "@/components/RecallPractice";
+import { recordPractice } from "@/lib/motivation";
 import { lessons } from "@/lib/content";
 import {
   review,
@@ -12,12 +16,15 @@ import {
   type AppState,
 } from "@/lib/store";
 
-import { canOpenStep, completeStep, dueWords, wordPool } from "@/lib/learning";
+import { canOpenStep, completeStep, dueWords, studiedWords, wordPool } from "@/lib/learning";
 import { WordQuiz } from "@/components/WordQuiz";
 import { SpeakingPractice } from "@/components/SpeakingPractice";
 
 export const Route = createFileRoute("/lesson")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { review?: boolean | undefined; recall?: boolean | undefined } => ({
+    recall: search["recall"] === true || search["recall"] === "true" ? true : undefined,
     review: search["review"] === true || search["review"] === "true" ? true : undefined,
   }),
   head: () => ({
@@ -36,7 +43,7 @@ export const Route = createFileRoute("/lesson")({
 
 function LessonPage() {
   const { state, update, ready } = useAppState();
-  const { review: reviewOnly } = Route.useSearch();
+  const { review: reviewOnly, recall: recallOnly } = Route.useSearch();
   if (!ready)
     return (
       <main className="p-8" role="status">
@@ -45,17 +52,18 @@ function LessonPage() {
     );
   if (!state.level)
     return (
-      <main className="mx-auto max-w-xl px-6 py-16">
+      <main className="app-shell focus-shell">
         <h1 className="text-3xl">Сначала выберите уровень</h1>
         <Link to="/placement" search={{ choose: true }} className="btn-primary mt-6">
           Выбрать уровень
         </Link>
       </main>
     );
+  if (recallOnly) return <RecallSession state={state} update={update} />;
   if (reviewOnly) return <ReviewSession state={state} update={update} />;
   if (state.day > lessons.length)
     return (
-      <main className="mx-auto max-w-xl px-6 py-16">
+      <main className="app-shell focus-shell">
         <h1 className="text-3xl">Курс завершён</h1>
         <p className="mt-4">
           Вы прошли все {lessons.length} уроков. Продолжайте повторять слова и пройдите итоговую
@@ -75,11 +83,9 @@ function ReviewSession({ state, update }: SessionProps) {
   const [words] = useState(() => dueWords(state));
   const nav = useNavigate();
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
-      <Link to="/" className="btn-ghost">
-        На главную
-      </Link>
-      <h1 className="mt-6 text-3xl">Повторение слов</h1>
+    <main className="app-shell focus-shell">
+      <TrainingHeader title="Не дать словам забыться" detail="Вспоминаем то, что уже изучили" />
+      <h1 className="page-title">Повторение слов</h1>
       <section className="card-soft mt-6 p-6">
         <WordQuiz
           words={words}
@@ -87,7 +93,9 @@ function ReviewSession({ state, update }: SessionProps) {
           onDone={() => void nav({ to: "/" })}
           onAnswer={(id, ok) =>
             update((s) =>
-              touchStreak({ ...s, cards: { ...s.cards, [id]: review(s.cards[id], ok) } }),
+              recordPractice(
+                touchStreak({ ...s, cards: { ...s.cards, [id]: review(s.cards[id], ok) } }),
+              ),
             )
           }
         />
@@ -127,42 +135,41 @@ function LessonSession({ state, update }: SessionProps) {
   const w = lesson.words[wi]!;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link to="/" className="text-sm font-semibold text-muted-foreground">
-          ✕ Выйти
-        </Link>
-        <span className="text-sm font-semibold">
-          Урок {day} из {lessons.length} · {lesson.title}
-        </span>
-      </div>
-      <nav aria-label="Этапы урока" className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {STEPS.map((s) => (
+    <main className="app-shell focus-shell">
+      <TrainingHeader title={lesson.titleRu} detail={`Миссия ${day} · ${lesson.title}`} />
+      <nav aria-label="Этапы урока" className="step-nav">
+        {STEPS.map((value, index) => (
           <button
-            key={s}
-            disabled={!canOpenStep(state, day, s)}
+            key={value}
+            disabled={!canOpenStep(state, day, value)}
+            aria-label={STEP_LABELS[value]}
             onClick={() => {
-              setStep(s);
+              setStep(value);
               setWi(0);
             }}
-            className={`min-h-11 rounded-lg px-2 py-2 text-xs font-semibold disabled:opacity-40 ${s === cur ? "bg-secondary text-secondary-foreground" : state.steps[`${day}:${s}`] ? "bg-accent" : "bg-muted"}`}
-            aria-current={s === cur ? "step" : undefined}
+            className={state.steps[`${day}:${value}`] ? "completed" : ""}
+            aria-current={value === cur ? "step" : undefined}
           >
-            {STEP_LABELS[s]}
+            {state.steps[`${day}:${value}`] ? (
+              <Check size={18} className="mx-auto" aria-hidden="true" />
+            ) : (
+              index + 1
+            )}
           </button>
         ))}
       </nav>
-      <p className="mt-6 text-sm font-bold uppercase tracking-widest text-primary">
-        {STEP_LABELS[cur]}
-      </p>
+      <div className="section-heading">
+        <h1 className="text-xl font-extrabold">{STEP_LABELS[cur]}</h1>
+        <span>Шаг {STEPS.indexOf(cur) + 1} из 6</span>
+      </div>
 
-      <section key={cur} className="card-soft mt-4 p-5 sm:p-8">
+      <section key={cur} className="lesson-stage">
         {cur === "review" && (
           <WordQuiz words={reviewWords} pool={pool} onAnswer={answer} onDone={complete} />
         )}
 
         {cur === "words" && (
-          <div>
+          <div className="word-card">
             <p className="text-sm text-muted-foreground">
               {wi + 1} / {lesson.words.length}
             </p>
@@ -170,9 +177,9 @@ function LessonSession({ state, update }: SessionProps) {
             <p className="mt-1 text-muted-foreground">{w.ipa}</p>
             <p className="mt-4 text-xl font-semibold">{w.ru}</p>
             <button className="btn-ghost mt-4" onClick={() => speak(w.en)}>
-              🔊 Послушать
+              <Volume2 size={18} aria-hidden="true" /> Послушать
             </button>
-            <div className="mt-6 rounded-xl bg-muted p-4">
+            <div className="word-example">
               <p className="font-semibold">{w.example}</p>
               <p className="text-sm text-muted-foreground">{w.exampleRu}</p>
             </div>
@@ -205,7 +212,7 @@ function LessonSession({ state, update }: SessionProps) {
                     <button
                       key={p.en}
                       onClick={() => speak(p.en)}
-                      className="mt-1 block w-full rounded-lg px-3 py-2 text-left hover:bg-muted"
+                      className="mt-2 block min-h-12 w-full rounded-xl bg-muted px-4 py-3 text-left hover:bg-accent"
                     >
                       <span className="font-semibold">{p.en}</span>{" "}
                       <span className="text-sm text-muted-foreground">— {p.ru}</span>
@@ -229,19 +236,20 @@ function LessonSession({ state, update }: SessionProps) {
                   speak(lesson.dialogue.map((d) => d.en).join(" "), rate);
                 }}
               >
-                ▶ Весь диалог
+                <Play size={17} aria-hidden="true" /> Весь диалог
               </button>
               {[0.75, 1, 1.25].map((r) => (
                 <button
                   key={r}
                   onClick={() => setRate(r)}
-                  className={`rounded-full px-3 py-1 text-sm font-semibold ${rate === r ? "bg-secondary text-secondary-foreground" : "bg-muted"}`}
+                  aria-pressed={rate === r}
+                  className={`min-h-11 min-w-11 rounded-full px-3 py-1 text-sm font-semibold ${rate === r ? "bg-secondary text-secondary-foreground" : "bg-muted"}`}
                 >
                   {r}x
                 </button>
               ))}
               <button
-                className="ml-auto text-sm font-semibold underline"
+                className="min-h-11 ml-auto text-sm font-semibold underline"
                 onClick={() => setShowRu(!showRu)}
               >
                 {showRu ? "Скрыть перевод" : "Перевод"}
@@ -285,6 +293,29 @@ function LessonSession({ state, update }: SessionProps) {
             onDone={complete}
           />
         )}
+      </section>
+    </main>
+  );
+}
+
+function RecallSession({ state, update }: SessionProps) {
+  const [words] = useState(() => studiedWords(state));
+  const nav = useNavigate();
+  return (
+    <main className="app-shell focus-shell">
+      <TrainingHeader title="Вызов памяти" detail="Без вариантов. Только ты и твоя память." />
+      <section className="lesson-stage">
+        <RecallPractice
+          words={words}
+          onDone={() => void nav({ to: "/" })}
+          onAnswer={(id, correct) =>
+            update((s) =>
+              recordPractice(
+                touchStreak({ ...s, cards: { ...s.cards, [id]: review(s.cards[id], correct) } }),
+              ),
+            )
+          }
+        />
       </section>
     </main>
   );

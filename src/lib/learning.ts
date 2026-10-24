@@ -1,4 +1,5 @@
 import { lessons, placementQuestions, levels, type Level, type Word } from "./content";
+import { recordPractice } from "./motivation";
 import { STEPS, touchStreak, type AppState, type Step } from "./store";
 
 export const wordPool = lessons.flatMap((lesson) => lesson.words);
@@ -32,12 +33,14 @@ export function canOpenStep(state: AppState, day: number, step: Step): boolean {
 export function completeStep(state: AppState, day: number, step: Step): AppState {
   const key = `${day}:${step}`;
   if (day > lessons.length || !canOpenStep(state, day, step) || state.steps[key]) return state;
-  return touchStreak({
-    ...state,
-    xp: state.xp + 10,
-    steps: { ...state.steps, [key]: true },
-    day: step === "test" ? day + 1 : day,
-  });
+  return recordPractice(
+    touchStreak({
+      ...state,
+      xp: state.xp + 10,
+      steps: { ...state.steps, [key]: true },
+      day: step === "test" ? day + 1 : day,
+    }),
+  );
 }
 
 export function studiedWords(state: AppState): Word[] {

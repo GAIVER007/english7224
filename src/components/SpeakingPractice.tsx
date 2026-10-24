@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Mic, Volume2 } from "lucide-react";
 import { speak } from "@/lib/store";
 import {
   compareSpeechText,
@@ -141,7 +142,7 @@ export function SpeakingPractice({ items, onDone }: SpeakingPracticeProps) {
         aria-describedby={!audioAvailable ? "speech-audio-status" : undefined}
         disabled={!audioAvailable}
       >
-        🔊 Послушать фразу
+        <Volume2 size={18} aria-hidden="true" /> Послушать фразу
       </button>
       {!audioAvailable && (
         <p id="speech-audio-status" className="mt-2 text-sm text-muted-foreground">
@@ -160,7 +161,8 @@ export function SpeakingPractice({ items, onDone }: SpeakingPracticeProps) {
             onClick={startRecognition}
             disabled={listening}
           >
-            {listening ? "Слушаю…" : attempted ? "🎤 Попробовать ещё раз" : "🎤 Начать запись"}
+            <Mic size={20} aria-hidden="true" />
+            {listening ? "Слушаю…" : attempted ? "Попробовать ещё раз" : "Начать запись"}
           </button>
         </>
       ) : (

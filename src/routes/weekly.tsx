@@ -1,4 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Check, CircleHelp, Trophy, Volume2 } from "lucide-react";
+import { TrainingHeader } from "@/components/TrainingUI";
+import { recordPractice } from "@/lib/motivation";
 import { useEffect, useRef, useState } from "react";
 import { review, speak, touchStreak, useAppState, type AppState } from "@/lib/store";
 import { studiedWords } from "@/lib/learning";
@@ -27,7 +30,7 @@ function Weekly() {
     );
   if (!state.level || studiedWords(state).length === 0)
     return (
-      <main className="mx-auto max-w-xl px-6 py-16">
+      <main className="app-shell focus-shell">
         <h1 className="text-3xl">Сначала изучите новые слова</h1>
         <p className="mt-4 text-muted-foreground">
           В проверку попадёт только материал, с которым вы уже работали.
@@ -80,8 +83,12 @@ function ExamSession({
   if (index >= questions.length) {
     const totalCorrect = Object.values(score).reduce((sum, area) => sum + area.correct, 0);
     return (
-      <main className="mx-auto max-w-xl px-5 py-10">
-        <h1 className="text-4xl font-semibold">Результат проверки</h1>
+      <main className="app-shell focus-shell">
+        <TrainingHeader title="Твоя проверка" detail="Посмотри, что уже получается" />
+        <div className="result-medallion">
+          <Trophy size={36} aria-hidden="true" />
+        </div>
+        <h1 className="page-title">Результат проверки</h1>
         <p className="mt-4 text-2xl">
           {totalCorrect} из {questions.length} ·{" "}
           {Math.round((totalCorrect / questions.length) * 100)}%
@@ -127,11 +134,9 @@ function ExamSession({
   }
   const question = questions[index]!;
   return (
-    <main className="mx-auto max-w-xl px-5 py-10">
-      <Link to="/" className="btn-ghost">
-        Выйти
-      </Link>
-      <p className="mt-5 text-sm text-muted-foreground">
+    <main className="app-shell focus-shell">
+      <TrainingHeader title="Проверить себя" detail="Слова · фразы · аудирование" />
+      <p className="mt-3 text-xs text-muted-foreground">
         При выходе до завершения итог не сохраняется; ответы на карточки сохраняются сразу.
       </p>
       {!audioAvailable && (
@@ -142,11 +147,11 @@ function ExamSession({
       <p className="mt-6 text-sm font-semibold">
         {AREA_LABELS[question.area]} · {index + 1}/{questions.length}
       </p>
-      <section className="card-soft mt-4 p-6">
+      <section className="lesson-stage">
         <h1 className="text-2xl font-semibold">{question.prompt}</h1>
         {question.audio && (
           <button className="btn-ghost mt-4" onClick={() => speak(question.audio!)}>
-            Прослушать
+            <Volume2 size={18} aria-hidden="true" /> Прослушать
           </button>
         )}
         <div className="mt-6 grid gap-3">
@@ -173,19 +178,21 @@ function ExamSession({
                     `${question.prompt} — ${question.answer}`,
                   ]);
                 update((previous) =>
-                  touchStreak({
-                    ...previous,
-                    cards: {
-                      ...previous.cards,
-                      [question.wordId]: review(previous.cards[question.wordId], ok),
-                    },
-                    weakAreas: ok
-                      ? previous.weakAreas
-                      : {
-                          ...previous.weakAreas,
-                          [question.area]: (previous.weakAreas[question.area] ?? 0) + 1,
-                        },
-                  }),
+                  recordPractice(
+                    touchStreak({
+                      ...previous,
+                      cards: {
+                        ...previous.cards,
+                        [question.wordId]: review(previous.cards[question.wordId], ok),
+                      },
+                      weakAreas: ok
+                        ? previous.weakAreas
+                        : {
+                            ...previous.weakAreas,
+                            [question.area]: (previous.weakAreas[question.area] ?? 0) + 1,
+                          },
+                    }),
+                  ),
                 );
               }}
             >

@@ -60,14 +60,14 @@ describe("SpeakingPractice", () => {
     setRecognition(MockRecognition);
     const view = render(<SpeakingPractice items={items} onDone={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "🎤 Начать запись" }));
+    fireEvent.click(screen.getByRole("button", { name: "Начать запись" }));
     const first = MockRecognition.instances[0]!;
     expect(first.start).toHaveBeenCalledOnce();
 
     act(() => first.onerror?.({ error: "network" }));
     expect(screen.getByRole("alert")).toHaveTextContent("сервисом распознавания");
 
-    fireEvent.click(screen.getByRole("button", { name: "🎤 Попробовать ещё раз" }));
+    fireEvent.click(screen.getByRole("button", { name: "Попробовать ещё раз" }));
     expect(first.abort).toHaveBeenCalledOnce();
     const second = MockRecognition.instances[1]!;
     expect(second.start).toHaveBeenCalledOnce();
@@ -81,7 +81,7 @@ describe("SpeakingPractice", () => {
     const onDone = vi.fn();
     render(<SpeakingPractice items={items} onDone={onDone} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "🎤 Начать запись" }));
+    fireEvent.click(screen.getByRole("button", { name: "Начать запись" }));
     const recognition = MockRecognition.instances[0]!;
     act(() =>
       recognition.onresult?.({
