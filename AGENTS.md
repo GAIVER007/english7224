@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Learner progress lives in browser localStorage via src/lib/store.ts and lesson content in src/lib/content.ts — no backend yet; move to Cloud when accounts are added.
