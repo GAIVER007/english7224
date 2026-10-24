@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LessonRouteImport } from './routes/lesson'
 import { Route as PlacementRouteImport } from './routes/placement'
 import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as WeeklyRouteImport } from './routes/weekly'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,25 @@ const ProgressRoute = ProgressRouteImport.update({
   path: '/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WeeklyRoute = WeeklyRouteImport.update({
+  id: '/weekly',
+  path: '/weekly',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
+  '/weekly': typeof WeeklyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
+  '/weekly': typeof WeeklyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
+  '/weekly': typeof WeeklyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/lesson' | '/placement' | '/progress'
+  fullPaths: '/' | '/lesson' | '/placement' | '/progress' | '/weekly'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lesson' | '/placement' | '/progress'
-  id: '__root__' | '/' | '/lesson' | '/placement' | '/progress'
+  to: '/' | '/lesson' | '/placement' | '/progress' | '/weekly'
+  id: '__root__' | '/' | '/lesson' | '/placement' | '/progress' | '/weekly'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   LessonRoute: typeof LessonRoute
   PlacementRoute: typeof PlacementRoute
   ProgressRoute: typeof ProgressRoute
+  WeeklyRoute: typeof WeeklyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/weekly': {
+      id: '/weekly'
+      path: '/weekly'
+      fullPath: '/weekly'
+      preLoaderRoute: typeof WeeklyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   LessonRoute: LessonRoute,
   PlacementRoute: PlacementRoute,
   ProgressRoute: ProgressRoute,
+  WeeklyRoute: WeeklyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
