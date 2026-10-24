@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LessonRouteImport } from './routes/lesson'
 import { Route as PlacementRouteImport } from './routes/placement'
 import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as TranslateRouteImport } from './routes/translate'
 import { Route as WeeklyRouteImport } from './routes/weekly'
+import { Route as ApiTranslateRouteImport } from './routes/api.translate'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,9 +37,19 @@ const ProgressRoute = ProgressRouteImport.update({
   path: '/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TranslateRoute = TranslateRouteImport.update({
+  id: '/translate',
+  path: '/translate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WeeklyRoute = WeeklyRouteImport.update({
   id: '/weekly',
   path: '/weekly',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTranslateRoute = ApiTranslateRouteImport.update({
+  id: '/api/translate',
+  path: '/api/translate',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -46,14 +58,18 @@ export interface FileRoutesByFullPath {
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
+  '/translate': typeof TranslateRoute
   '/weekly': typeof WeeklyRoute
+  '/api/translate': typeof ApiTranslateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
+  '/translate': typeof TranslateRoute
   '/weekly': typeof WeeklyRoute
+  '/api/translate': typeof ApiTranslateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,14 +77,38 @@ export interface FileRoutesById {
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
+  '/translate': typeof TranslateRoute
   '/weekly': typeof WeeklyRoute
+  '/api/translate': typeof ApiTranslateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/lesson' | '/placement' | '/progress' | '/weekly'
+  fullPaths:
+    | '/'
+    | '/lesson'
+    | '/placement'
+    | '/progress'
+    | '/translate'
+    | '/weekly'
+    | '/api/translate'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lesson' | '/placement' | '/progress' | '/weekly'
-  id: '__root__' | '/' | '/lesson' | '/placement' | '/progress' | '/weekly'
+  to:
+    | '/'
+    | '/lesson'
+    | '/placement'
+    | '/progress'
+    | '/translate'
+    | '/weekly'
+    | '/api/translate'
+  id:
+    | '__root__'
+    | '/'
+    | '/lesson'
+    | '/placement'
+    | '/progress'
+    | '/translate'
+    | '/weekly'
+    | '/api/translate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,7 +116,9 @@ export interface RootRouteChildren {
   LessonRoute: typeof LessonRoute
   PlacementRoute: typeof PlacementRoute
   ProgressRoute: typeof ProgressRoute
+  TranslateRoute: typeof TranslateRoute
   WeeklyRoute: typeof WeeklyRoute
+  ApiTranslateRoute: typeof ApiTranslateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,11 +151,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/translate': {
+      id: '/translate'
+      path: '/translate'
+      fullPath: '/translate'
+      preLoaderRoute: typeof TranslateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/weekly': {
       id: '/weekly'
       path: '/weekly'
       fullPath: '/weekly'
       preLoaderRoute: typeof WeeklyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/translate': {
+      id: '/api/translate'
+      path: '/api/translate'
+      fullPath: '/api/translate'
+      preLoaderRoute: typeof ApiTranslateRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -124,7 +180,9 @@ const rootRouteChildren: RootRouteChildren = {
   LessonRoute: LessonRoute,
   PlacementRoute: PlacementRoute,
   ProgressRoute: ProgressRoute,
+  TranslateRoute: TranslateRoute,
   WeeklyRoute: WeeklyRoute,
+  ApiTranslateRoute: ApiTranslateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

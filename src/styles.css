@@ -628,7 +628,7 @@
   transform: translateX(-50%);
   width: min(100%, 520px);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   background: #fffffff2;
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
@@ -1005,4 +1005,33 @@
   .lesson-stage {
     animation: none;
   }
+}
+
+.translation-input {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 130px;
+  max-height: 320px;
+  padding: 12px 0;
+  font-size: 18px;
+  line-height: 1.6;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+.translation-input::placeholder {
+  color: var(--muted-foreground);
+}
+.translation-result {
+  min-height: 190px;
+  background: var(--lavender);
+}
+.translation-output {
+  margin-top: 18px;
+  font-size: 20px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
 }

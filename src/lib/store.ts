@@ -349,7 +349,7 @@ export function touchStreak(state: AppState, now: number | Date = Date.now()): A
   };
 }
 
-export function speak(text: string, rate = 1) {
+export function speak(text: string, rate = 1, language: "en-US" | "ru-RU" = "en-US") {
   if (typeof window === "undefined") return;
   const report = () => window.dispatchEvent(new Event("speakup-audio-error"));
   if (!("speechSynthesis" in window)) {
@@ -359,7 +359,7 @@ export function speak(text: string, rate = 1) {
   try {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
+    utterance.lang = language;
     utterance.rate = rate;
     utterance.onerror = (event) => {
       if (event.error !== "interrupted" && event.error !== "canceled") report();

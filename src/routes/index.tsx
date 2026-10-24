@@ -7,6 +7,7 @@ import {
   Flame,
   Layers3,
   Lightbulb,
+  Languages,
   LockKeyhole,
   PencilLine,
   SlidersHorizontal,
@@ -249,6 +250,16 @@ function Home() {
             </span>
           </Link>
         </div>
+        <Link to="/translate" className="course-item mt-3">
+          <span className="practice-icon">
+            <Languages size={24} aria-hidden="true" />
+          </span>
+          <div>
+            <h3>Быстрый перевод</h3>
+            <p>Напиши на русском или английском</p>
+          </div>
+          <ArrowRight size={18} aria-hidden="true" />
+        </Link>
         <Link to="/weekly" className="course-item mt-3">
           <span className="course-icon">
             <Trophy size={22} aria-hidden="true" />

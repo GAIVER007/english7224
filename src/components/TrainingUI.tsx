@@ -1,5 +1,13 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { ArrowLeft, AudioLines, ChartNoAxesCombined, House, Layers3, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  AudioLines,
+  ChartNoAxesCombined,
+  House,
+  Languages,
+  Layers3,
+  Sparkles,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { lessonIcons } from "@/lib/lesson-icons";
 
@@ -13,7 +21,11 @@ export function Brand() {
     </span>
   );
 }
-export function BottomNav({ active = "home" }: { active?: "home" | "practice" | "progress" }) {
+export function BottomNav({
+  active = "home",
+}: {
+  active?: "home" | "practice" | "translate" | "progress";
+}) {
   const hash = useLocation({ select: (location) => location.hash });
   const selected = active === "home" && hash === "practice" ? "practice" : active;
   return (
@@ -34,6 +46,14 @@ export function BottomNav({ active = "home" }: { active?: "home" | "practice" | 
       >
         <Layers3 aria-hidden="true" size={22} />
         <span>Практика</span>
+      </Link>
+      <Link
+        to="/translate"
+        className={selected === "translate" ? "is-selected" : ""}
+        aria-current={selected === "translate" ? "page" : undefined}
+      >
+        <Languages aria-hidden="true" size={22} />
+        <span>Перевод</span>
       </Link>
       <Link
         to="/progress"
