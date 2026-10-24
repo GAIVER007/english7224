@@ -11,6 +11,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { ProgressBackup } from "@/components/ProgressBackup";
+import { PersonalRating } from "@/components/PersonalRating";
 import { lessons } from "@/lib/content";
 import { courseModules, moduleExamKey } from "@/lib/curriculum";
 import { AREA_LABELS, type Area } from "@/lib/exam";
@@ -57,7 +58,8 @@ function Progress() {
         <br />
         <span>ты уже продвинулся.</span>
       </h1>
-      <section className="rank-card">
+      <PersonalRating state={state} />
+      <section className="rank-card mt-6">
         <div className="rank-top">
           <div className="rank-symbol">
             <Sparkles size={32} aria-hidden="true" />

@@ -1,4 +1,5 @@
 import type { AppState, DailyGoal } from "./store";
+import { personalRating } from "./rating";
 
 const DEFAULT_DAILY_GOAL: DailyGoal = 5;
 
@@ -38,6 +39,10 @@ export const BADGE_IDS = [
   "ten-mastered",
   "streak-3",
   "streak-7",
+  "first-module",
+  "all-modules",
+  "speaking-10",
+  "practice-30",
 ] as const;
 export type BadgeId = (typeof BADGE_IDS)[number];
 
@@ -121,8 +126,33 @@ function badgesFromProgress(state: AppState): MotivationBadge[] {
   ).length;
   const cards = Object.values(state.cards);
   const masteredCards = cards.filter((card) => card.box >= 2).length;
+  const rating = personalRating(state);
 
   return [
+    {
+      id: "first-module",
+      title: "Первый рубеж",
+      description: "Сдать экзамен одного модуля",
+      earned: rating.modules >= 1,
+    },
+    {
+      id: "all-modules",
+      title: "Маршрут пройден",
+      description: "Сдать все 6 экзаменов модулей",
+      earned: rating.modules >= 6,
+    },
+    {
+      id: "speaking-10",
+      title: "Говорю чаще",
+      description: "Пройти речевые этапы 10 разных миссий",
+      earned: rating.speaking >= 10,
+    },
+    {
+      id: "practice-30",
+      title: "Английский в жизни",
+      description: "Заниматься 30 дней, необязательно подряд",
+      earned: rating.records.activeDays >= 30,
+    },
     {
       id: "first-lesson",
       title: "Первый урок",

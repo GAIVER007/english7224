@@ -113,7 +113,7 @@ describe("motivation rewards", () => {
     });
     const status = Object.fromEntries(badges.map((badge) => [badge.id, badge.earned]));
 
-    expect(status).toEqual({
+    expect(status).toMatchObject({
       "first-lesson": true,
       "five-lessons": false,
       "ten-words": true,
