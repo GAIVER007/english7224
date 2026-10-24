@@ -104,15 +104,15 @@ function Home() {
       <h1 className="page-title">
         {daily.completed ? (
           <>
-            Хорошая работа.
+            Хороший день
             <br />
-            <span>Сегодня ты вырос.</span>
+            <span>для английского.</span>
           </>
         ) : (
           <>
-            Чуть больше практики.
+            Английский
             <br />
-            <span>Чуть больше тебя.</span>
+            <span>в твоём ритме.</span>
           </>
         )}
       </h1>
@@ -175,7 +175,7 @@ function Home() {
           </p>
         </section>
       )}
-      <SectionHeading title="Следующий маленький шаг" />
+      <SectionHeading title="Твоя следующая миссия" />
       <section className="mission-card">
         <div className="mission-top">
           <div>
@@ -277,46 +277,48 @@ function Home() {
             </span>
           </Link>
         </div>
-        <Link to="/lesson" search={{ free: true }} className="course-item mt-3">
-          <span className="course-icon">
-            <PencilLine size={24} aria-hidden="true" />
-          </span>
-          <div>
-            <h3>Свободный тренажёр</h3>
-            <p>Собирай предложения и тренируй времена</p>
-          </div>
-          <ArrowRight size={18} aria-hidden="true" />
-        </Link>
-        <Link to="/lesson" search={{ training: true }} className="course-item mt-3">
-          <span className="course-icon">
-            <Languages size={24} aria-hidden="true" />
-          </span>
-          <div>
-            <h3>Лаборатория речи</h3>
-            <p>Аудиодиктант, пересказ и твоя реплика</p>
-          </div>
-          <ArrowRight size={18} aria-hidden="true" />
-        </Link>
-        <Link to="/translate" className="course-item mt-3">
-          <span className="practice-icon">
-            <Languages size={24} aria-hidden="true" />
-          </span>
-          <div>
-            <h3>Быстрый перевод</h3>
-            <p>Напиши на русском или английском</p>
-          </div>
-          <ArrowRight size={18} aria-hidden="true" />
-        </Link>
-        <Link to="/weekly" className="course-item mt-3">
-          <span className="course-icon">
-            <Trophy size={22} aria-hidden="true" />
-          </span>
-          <div>
-            <h3>Проверить себя</h3>
-            <p>Слова, фразы и аудирование</p>
-          </div>
-          <ChevronRight size={18} aria-hidden="true" />
-        </Link>
+        <div className="training-tools">
+          <Link to="/lesson" search={{ free: true }} className="training-tool">
+            <span className="course-icon">
+              <PencilLine size={24} aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Свободный тренажёр</h3>
+              <p>Собирай предложения и тренируй времена</p>
+            </div>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+          <Link to="/lesson" search={{ training: true }} className="training-tool">
+            <span className="course-icon">
+              <Languages size={24} aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Лаборатория речи</h3>
+              <p>Аудиодиктант, пересказ и твоя реплика</p>
+            </div>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+          <Link to="/translate" className="training-tool">
+            <span className="course-icon">
+              <Languages size={24} aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Быстрый перевод</h3>
+              <p>Напиши на русском или английском</p>
+            </div>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
+          <Link to="/weekly" className="training-tool">
+            <span className="course-icon">
+              <Trophy size={22} aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Проверить себя</h3>
+              <p>Слова, фразы и аудирование</p>
+            </div>
+            <ChevronRight size={18} aria-hidden="true" />
+          </Link>
+        </div>
       </section>
       <SectionHeading
         title="Твой разговорный маршрут"
