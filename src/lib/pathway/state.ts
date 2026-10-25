@@ -13,6 +13,18 @@ export const pathUnitProgressSchema = z
     writing: z.string().max(4000),
     writingChecks: z.array(z.boolean()).length(3),
     speakingChecks: z.array(z.boolean()).length(3),
+    dictation: z
+      .array(
+        z.object({
+          target: z.string().max(1000),
+          draft: z.string().max(1000),
+          checked: z.boolean(),
+          revealed: z.boolean(),
+          completed: z.boolean(),
+        }),
+      )
+      .max(3)
+      .optional(),
     speakingNotes: z.string().max(2000).optional(),
     speakingAttempts: count.optional(),
     speakingSeconds: count.max(120).optional(),

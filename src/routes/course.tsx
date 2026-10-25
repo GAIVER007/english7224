@@ -6,6 +6,7 @@ import { useAppState, speak } from "@/lib/store";
 import { BottomNav, TrainingHeader } from "@/components/TrainingUI";
 import { RecallPractice } from "@/components/RecallPractice";
 import { WritingFeedback } from "@/components/WritingFeedback";
+import { DictationPractice } from "@/components/DictationPractice";
 import { SpeakingRecorder } from "@/components/SpeakingRecorder";
 import { pathUnits, PATH_LEVELS, levelTitles, unitsForLevel, levelQuestions } from "@/lib/pathway";
 import { revisionUnits } from "@/lib/pathway/plan";
@@ -455,6 +456,12 @@ function UnitSession({ unit }: { unit: PathUnit }) {
               {unit.listening}
             </p>
           </details>
+          <DictationPractice
+            key={unit.id}
+            text={unit.listening}
+            saved={progress.dictation}
+            onChange={(dictation) => patch({ dictation })}
+          />
         </section>
       )}
       {stage === 3 && (
