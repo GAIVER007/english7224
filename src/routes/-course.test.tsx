@@ -6,7 +6,7 @@ import { pathUnits } from "@/lib/pathway";
 import { emptyPath, emptyUnit } from "@/lib/pathway/state";
 
 const { routeSearch } = vi.hoisted(() => ({
-  routeSearch: { value: {} as { unit?: string; exam?: string } },
+  routeSearch: { value: {} as { unit?: string; exam?: string; review?: string } },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -19,6 +19,7 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@/lib/learning", async (importOriginal) => ({
@@ -147,5 +148,52 @@ describe("course unit session", () => {
       total: 6,
       passed: true,
     });
+  });
+
+  it("adds unit words and records a due active-recall answer", () => {
+    seedUnit({ stage: 0 });
+    const first = render(<Course />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить 6 слов в повторение" }));
+    expect(screen.getByRole("link", { name: "Вспомнить 5 слов · осталось 6" })).toBeInTheDocument();
+    expect(
+      Object.keys(JSON.parse(localStorage.getItem("speakup-state-v1")!).pathway.vocabulary),
+    ).toHaveLength(6);
+
+    first.unmount();
+    routeSearch.value = { review: unit.id };
+    render(<Course />);
+    expect(screen.getByText("В этой тренировке до 5 слов.", { exact: false })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Твой ответ на английском"), {
+      target: { value: "letter" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Проверить" }));
+
+    const saved = JSON.parse(localStorage.getItem("speakup-state-v1")!);
+    expect(saved.pathway.vocabulary["a0-01:v:letter"]).toMatchObject({
+      box: 1,
+      correct: 1,
+      wrong: 0,
+    });
+    expect(saved.xp).toBe(1);
+  });
+  it("keeps feedback and results visible after the last due word is answered", () => {
+    updateAppState(() => ({
+      ...createInitialState(),
+      pathway: {
+        ...emptyPath(),
+        vocabulary: { "a0-01:v:letter": { box: 0, due: 0, correct: 0, wrong: 0 } },
+      },
+    }));
+    routeSearch.value = { review: "due" };
+    render(<Course />);
+    fireEvent.change(screen.getByLabelText("Твой ответ на английском"), {
+      target: { value: "letter" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Проверить" }));
+    expect(screen.getByText("Верно! Вспомнил самостоятельно.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
+    expect(screen.getByRole("heading", { name: "Отлично закреплено!" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Завершить практику" })).toBeInTheDocument();
   });
 });

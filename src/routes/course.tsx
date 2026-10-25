@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Check, Volume2 } from "lucide-react";
+import { ArrowRight, BookOpenCheck, Check, Volume2 } from "lucide-react";
 import { shuffle } from "@/lib/learning";
 import { useAppState, speak } from "@/lib/store";
 import { BottomNav, TrainingHeader } from "@/components/TrainingUI";
+import { RecallPractice } from "@/components/RecallPractice";
 import { pathUnits, PATH_LEVELS, levelTitles, unitsForLevel, levelQuestions } from "@/lib/pathway";
 import { emptyPath, emptyUnit } from "@/lib/pathway/state";
 import {
@@ -15,15 +16,27 @@ import {
   submitLevel,
 } from "@/lib/pathway/progress";
 import type { PathLevel, PathQuestion, PathUnit } from "@/lib/pathway/types";
+import {
+  duePathVocabulary,
+  formatPathVocabularyDue,
+  learnedPathVocabularyCount,
+  learnPathVocabulary,
+  nextPathVocabularyDue,
+  reviewPathVocabulary,
+} from "@/lib/pathway/vocabulary";
 
 export const Route = createFileRoute("/course")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { unit?: string | undefined; exam?: PathLevel | undefined } => ({
+  ): { unit?: string | undefined; exam?: PathLevel | undefined; review?: string | undefined } => ({
     unit: typeof search["unit"] === "string" ? search["unit"] : undefined,
     exam: PATH_LEVELS.includes(search["exam"] as PathLevel)
       ? (search["exam"] as PathLevel)
       : undefined,
+    review:
+      search["review"] === "due" || pathUnits.some((unit) => unit.id === search["review"])
+        ? (search["review"] as string)
+        : undefined,
   }),
   head: () => ({ meta: [{ title: "Программа A0–C1 — SpeakUp" }] }),
   component: Course,
@@ -123,7 +136,7 @@ function Question({
 }
 function Course() {
   const { state, ready, update } = useAppState();
-  const { unit: unitId, exam } = Route.useSearch();
+  const { unit: unitId, exam, review } = Route.useSearch();
   const path = state.pathway ?? emptyPath();
   const unit = pathUnits.find((u) => u.id === unitId);
   const [historyCount, setHistoryCount] = useState(10);
@@ -133,6 +146,7 @@ function Course() {
         Загружаем программу…
       </main>
     );
+  if (review) return <VocabularySession key={review} scope={review} />;
   if (unit) return <UnitSession key={unit.id} unit={unit} />;
   if (exam) return <LevelExam key={exam} level={exam} />;
   const units = unitsForLevel(path.selected);
@@ -141,6 +155,9 @@ function Course() {
   const due = pathUnits.filter(
     (u) => path.units[u.id]?.passed && path.units[u.id]!.due <= Date.now(),
   );
+  const dueWords = duePathVocabulary(state);
+  const learnedWords = learnedPathVocabularyCount(state);
+  const nextWordReview = nextPathVocabularyDue(state);
   return (
     <main className="app-shell focus-shell">
       <TrainingHeader title="Программа A0–C1" detail="Учись по навыкам, в своём темпе" />
@@ -189,6 +206,32 @@ function Course() {
             ? "A0 — подготовка к A1: звуки, первые слова и короткие реплики."
             : "Уровень задаёт сложность материала. Его выбор не меняет твои результаты."}
         </p>
+      </section>
+      <section className="card-soft p-5 space-y-3 mt-4" aria-labelledby="course-vocabulary-title">
+        <div className="flex items-center gap-3">
+          <BookOpenCheck size={22} aria-hidden="true" />
+          <h2 id="course-vocabulary-title" className="text-xl font-semibold">
+            Слова в памяти
+          </h2>
+        </div>
+        {learnedWords === 0 ? (
+          <p>Добавляй слова внутри тем. Они вернутся на повторение в нужный день.</p>
+        ) : (
+          <p>
+            В повторении: {learnedWords}. Сейчас нужно вспомнить: {dueWords.length}.
+          </p>
+        )}
+        {dueWords.length > 0 ? (
+          <Link className="btn-primary w-full" to="/course" search={{ review: "due" }}>
+            Повторить {Math.min(5, dueWords.length)} слов
+          </Link>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {nextWordReview === null
+              ? "Очередь пока пустая. Открой тему и добавь её слова."
+              : `Следующее повторение — ${formatPathVocabularyDue(nextWordReview)}.`}
+          </p>
+        )}
       </section>
       {due.length > 0 && (
         <Link
@@ -287,6 +330,8 @@ function UnitSession({ unit }: { unit: PathUnit }) {
     (q, i) => progress.answers[String(i)] === q.answer,
   ).length;
   const following = pathUnits[pathUnits.indexOf(unit) + 1];
+  const learnedWords = learnedPathVocabularyCount(state, unit);
+  const dueWords = duePathVocabulary(state, Date.now(), unit).length;
   return (
     <main className="app-shell focus-shell">
       <TrainingHeader title={`${unit.level} · ${unit.title}`} detail={unit.goal} />
@@ -329,6 +374,28 @@ function UnitSession({ unit }: { unit: PathUnit }) {
               </div>
             ))}
           </dl>
+          {learnedWords < unit.vocabulary.length ? (
+            <button
+              className="btn-secondary w-full"
+              type="button"
+              onClick={() => update((s) => learnPathVocabulary(s, unit))}
+            >
+              Добавить {unit.vocabulary.length} слов в повторение
+            </button>
+          ) : dueWords > 0 ? (
+            <Link className="btn-primary w-full" to="/course" search={{ review: unit.id }}>
+              Вспомнить {Math.min(5, dueWords)} слов · осталось {dueWords}
+            </Link>
+          ) : (
+            <p className="text-sm text-muted-foreground" role="status">
+              Все слова темы добавлены. Приложение напомнит, когда придёт срок повторения.
+            </p>
+          )}
+          {storageError && (
+            <p className="text-sm text-destructive" role="alert">
+              Не удалось сохранить слова. Проверь доступ к хранилищу устройства.
+            </p>
+          )}
         </section>
       )}
       {stage === 1 && (
@@ -498,6 +565,54 @@ function UnitSession({ unit }: { unit: PathUnit }) {
           Далее · {STAGES[stage + 1]}
         </button>
       )}
+    </main>
+  );
+}
+
+function VocabularySession({ scope }: { scope: string }) {
+  const { state, update, storageError } = useAppState();
+  const navigate = useNavigate();
+  const unit = scope === "due" ? undefined : pathUnits.find((item) => item.id === scope);
+  const [sessionWords] = useState(() => duePathVocabulary(state, Date.now(), unit).slice(0, 5));
+
+  return (
+    <main className="app-shell focus-shell">
+      <TrainingHeader
+        title="Повторение слов"
+        detail={unit ? `${unit.level} · ${unit.title}` : "По расписанию памяти"}
+      />
+      <Link className="btn-ghost mb-4" to="/course" search={{}}>
+        К программе
+      </Link>
+      <p className="subcopy mb-4">
+        В этой тренировке до 5 слов. Пиши перевод по памяти. Ошибка или показ ответа вернут слово на
+        ближайшее повторение.
+      </p>
+      <section className="lesson-stage">
+        {sessionWords.length > 0 ? (
+          <RecallPractice
+            words={sessionWords}
+            onAnswer={(id, correct) => update((s) => reviewPathVocabulary(s, id, correct))}
+            onDone={() => void navigate({ to: "/course", search: {} })}
+          />
+        ) : (
+          <div className="text-center">
+            <Check className="mx-auto" size={36} aria-hidden="true" />
+            <h1 className="mt-4 text-2xl font-semibold">На сегодня всё повторено</h1>
+            <p className="mt-2 text-muted-foreground">
+              Новая короткая тренировка появится, когда подойдёт срок следующего слова.
+            </p>
+            <Link className="btn-primary mt-6 w-full" to="/course" search={{}}>
+              К программе
+            </Link>
+          </div>
+        )}
+        {storageError && (
+          <p className="mt-4 text-sm text-destructive" role="alert">
+            Ответ не сохранился. Проверь доступ к хранилищу устройства.
+          </p>
+        )}
+      </section>
     </main>
   );
 }

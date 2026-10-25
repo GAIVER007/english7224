@@ -95,4 +95,28 @@ describe("RecallPractice", () => {
     expect(onAnswer).toHaveBeenCalledTimes(1);
     expect(onAnswer).toHaveBeenCalledWith("like", true);
   });
+
+  it("shows context for an ambiguous prompt without weakening exact recall", () => {
+    const onAnswer = vi.fn();
+    render(
+      <RecallPractice
+        words={[
+          {
+            ...menu,
+            recallHint: "Точное выражение из темы · 2 слова",
+          },
+        ]}
+        onAnswer={onAnswer}
+        onDone={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Точное выражение из темы · 2 слова")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Твой ответ на английском"), {
+      target: { value: "food list" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Проверить" }));
+
+    expect(onAnswer).toHaveBeenCalledWith("menu", false);
+  });
 });

@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 import { emptyPath } from "@/lib/pathway/state";
+import { duePathVocabulary } from "@/lib/pathway/vocabulary";
 import { CoursePath } from "@/components/CoursePath";
 import { lessons } from "@/lib/content";
 import { StudyPlan } from "@/components/StudyPlan";
@@ -75,6 +76,7 @@ function Home() {
       </main>
     );
 
+  const courseWordsDue = duePathVocabulary(state).length;
   const due = dueWords(state).length;
   const studied = studiedWords(state).length;
   return (
@@ -106,6 +108,13 @@ function Home() {
           Открыть программу <ArrowRight size={18} aria-hidden="true" />
         </span>
       </Link>
+      {courseWordsDue > 0 && (
+        <Link to="/course" search={{ review: "due" }} className="btn-secondary w-full mb-5">
+          <Layers3 size={18} aria-hidden="true" />
+          Повторить слова курса · {courseWordsDue}
+          <ArrowRight size={18} aria-hidden="true" />
+        </Link>
+      )}
       <WeeklyRhythm state={state} />
       <section id="practice" className="scroll-mt-6">
         <SectionHeading title="Практика" aside={<span>Выбери навык</span>} />

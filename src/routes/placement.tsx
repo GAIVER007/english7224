@@ -38,7 +38,7 @@ function Placement() {
       ...s,
       level: lvl,
       pathway: {
-        ...(s.pathway ?? { selected: lvl, units: {}, exams: {}, history: [] }),
+        ...(s.pathway ?? { selected: lvl, vocabulary: {}, units: {}, exams: {}, history: [] }),
         selected: lvl,
       },
     }));
@@ -69,7 +69,13 @@ function Placement() {
                 ...s,
                 level: "A1",
                 pathway: {
-                  ...(s.pathway ?? { selected: "A0", units: {}, exams: {}, history: [] }),
+                  ...(s.pathway ?? {
+                    selected: "A0",
+                    vocabulary: {},
+                    units: {},
+                    exams: {},
+                    history: [],
+                  }),
                   selected: "A0",
                 },
               }));

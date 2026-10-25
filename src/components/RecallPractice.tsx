@@ -1,18 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Check, Eye, RotateCcw } from "lucide-react";
 
-import type { Word } from "@/lib/content";
 import { shuffle } from "@/lib/learning";
 import { isRecallAnswerCorrect } from "@/lib/recall";
 
+export interface RecallWord {
+  id: string;
+  en: string;
+  ru: string;
+  recallHint?: string;
+  example?: string;
+  exampleRu?: string;
+}
+
 interface RecallPracticeProps {
-  words: Word[];
+  words: RecallWord[];
   onAnswer: (id: string, correct: boolean) => void;
   onDone: () => void;
 }
 
 interface RecallItem {
-  word: Word;
+  word: RecallWord;
   originalNumber: number;
   isRetry: boolean;
 }
@@ -128,6 +136,9 @@ export function RecallPractice({ words, onAnswer, onDone }: RecallPracticeProps)
         Как это будет по-английски?
       </h2>
       <p className="mt-4 text-3xl font-semibold">{current.word.ru}</p>
+      {current.word.recallHint && (
+        <p className="mt-2 text-sm text-muted-foreground">{current.word.recallHint}</p>
+      )}
 
       <form
         className="mt-6"
@@ -182,8 +193,10 @@ export function RecallPractice({ words, onAnswer, onDone }: RecallPracticeProps)
                   ? `Ответ: ${current.word.en}`
                   : `Пока нет. Правильный ответ: ${current.word.en}`}
             </p>
-            <p className="mt-3 font-medium">{current.word.example}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{current.word.exampleRu}</p>
+            {current.word.example && <p className="mt-3 font-medium">{current.word.example}</p>}
+            {current.word.exampleRu && (
+              <p className="mt-1 text-sm text-muted-foreground">{current.word.exampleRu}</p>
+            )}
             <button className="btn-primary mt-5 w-full" type="button" onClick={continuePractice}>
               Продолжить
               <ArrowRight aria-hidden="true" />

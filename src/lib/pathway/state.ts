@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { PATH_LEVELS } from "./types";
 const count = z.number().int().nonnegative();
+const vocabularyCardSchema = z.object({
+  box: count.max(5),
+  due: z.number().finite().nonnegative(),
+  correct: count,
+  wrong: count,
+});
 export const pathUnitProgressSchema = z
   .object({
     stage: count.max(5),
@@ -20,6 +26,9 @@ export const pathUnitProgressSchema = z
 export type PathUnitProgress = z.infer<typeof pathUnitProgressSchema>;
 export const pathStateSchema = z.object({
   selected: z.enum(PATH_LEVELS),
+  vocabulary: z
+    .record(z.string().regex(/^(a0|a1|a2|b1|b2|c1)-(0[1-9]|1[0-2]):v:.+$/), vocabularyCardSchema)
+    .default({}),
   units: z.record(
     z.string().regex(/^(a0|a1|a2|b1|b2|c1)-(0[1-9]|1[0-2])$/),
     pathUnitProgressSchema,
@@ -59,7 +68,7 @@ export const pathStateSchema = z.object({
 });
 export type PathState = z.infer<typeof pathStateSchema>;
 export function emptyPath(): PathState {
-  return { selected: "A0", units: {}, exams: {}, history: [] };
+  return { selected: "A0", vocabulary: {}, units: {}, exams: {}, history: [] };
 }
 export function emptyUnit(): PathUnitProgress {
   return {
