@@ -48,3 +48,20 @@ it("keeps mistakes for a focused round and awards completion once", () => {
   expect(complete).toHaveBeenCalledTimes(1);
   expect(next).toHaveBeenCalledWith([task]);
 });
+
+it("passes the phrase id so an incorrect answer can be restored for later practice", () => {
+  const answer = vi.fn();
+  render(
+    <GrammarRound
+      tasks={[task]}
+      typed
+      onAnswer={answer}
+      onComplete={vi.fn()}
+      onNext={vi.fn()}
+      onExit={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Пока не знаю — разобрать" }));
+  expect(answer).toHaveBeenCalledExactlyOnceWith(false, task.id);
+  expect(screen.getByRole("button", { name: "Послушать фразу" })).toBeInTheDocument();
+});

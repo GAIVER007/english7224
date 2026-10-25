@@ -1,4 +1,7 @@
 import { useRef, useState } from "react";
+import { Volume2 } from "lucide-react";
+import { speak, type CardState } from "@/lib/store";
+import { grammarReview, grammarTopicProgress, grammarTheory } from "@/lib/grammar-review";
 import { shuffle } from "@/lib/learning";
 import {
   FORMS,
@@ -13,15 +16,17 @@ import {
 const TASKS = grammarTasks();
 export function FreeTrainer({
   history,
+  cards = {},
   onAnswer,
   onComplete,
 }: {
   history: boolean[];
-  onAnswer: (correct: boolean) => void;
+  cards?: Record<string, CardState>;
+  onAnswer: (correct: boolean, taskId?: string) => void;
   onComplete: () => void;
 }) {
-  const [tense, setTense] = useState<Tense | "all">("all");
-  const [form, setForm] = useState<SentenceForm | "all">("all");
+  const [tense, setTense] = useState<Tense | "all">("present");
+  const [form, setForm] = useState<SentenceForm | "all">("positive");
   const [typed, setTyped] = useState(false);
   const [round, setRound] = useState<GrammarTask[] | null>(null);
   const [roundId, setRoundId] = useState(0);
@@ -38,6 +43,9 @@ export function FreeTrainer({
     setRoundId((value) => value + 1);
   };
   const correct = history.filter(Boolean).length;
+  const due = grammarReview(cards);
+  const ruleTask = TASKS.find((task) => task.tense === tense && task.form === form);
+  const topic = grammarTopicProgress(cards, tense, form);
   return (
     <section>
       <h1 className="page-title">Свободный тренажёр</h1>
@@ -72,36 +80,64 @@ export function FreeTrainer({
         />
       ) : (
         <div className="card-soft space-y-4 p-5">
-          <label className="block">
-            Время
-            <select
-              className="input-field mt-2 w-full"
-              value={tense}
-              onChange={(event) => setTense(event.target.value as Tense | "all")}
+          {due.length > 0 && (
+            <button className="btn-primary w-full" onClick={() => start(due)}>
+              Повторить фразы · {due.length}
+            </button>
+          )}
+          <details>
+            <summary className="min-h-12 cursor-pointer font-semibold">
+              {tense === "all"
+                ? "Все темы вперемешку"
+                : `${TENSES[tense]} · ${form === "all" ? "Все формы" : FORMS[form]}`}
+            </summary>
+            <div className="grammar-topics">
+              {Object.entries(TENSES).flatMap(([time, title]) =>
+                Object.entries(FORMS).map(([kind, label]) => {
+                  const progress = grammarTopicProgress(cards, time, kind);
+                  return (
+                    <button
+                      key={`${time}-${kind}`}
+                      className="grammar-topic"
+                      aria-pressed={tense === time && form === kind}
+                      onClick={() => {
+                        setTense(time as Tense);
+                        setForm(kind as SentenceForm);
+                      }}
+                    >
+                      <strong>{title}</strong>
+                      <span>{label}</span>
+                      <small>
+                        Закреплено {progress.reinforced}/{progress.total}
+                      </small>
+                    </button>
+                  );
+                }),
+              )}
+            </div>
+            <button
+              className="btn-ghost w-full mt-3"
+              aria-pressed={tense === "all"}
+              onClick={() => {
+                setTense("all");
+                setForm("all");
+              }}
             >
-              <option value="all">Все три времени</option>
-              {Object.entries(TENSES).map(([value, title]) => (
-                <option key={value} value={value}>
-                  {title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            Тип предложения
-            <select
-              className="input-field mt-2 w-full"
-              value={form}
-              onChange={(event) => setForm(event.target.value as SentenceForm | "all")}
-            >
-              <option value="all">Все типы</option>
-              {Object.entries(FORMS).map(([value, title]) => (
-                <option key={value} value={value}>
-                  {title}
-                </option>
-              ))}
-            </select>
-          </label>
+              Все темы вперемешку
+            </button>
+          </details>
+          {ruleTask && (
+            <section className="grammar-theory" aria-label="Правило перед практикой">
+              <h2 className="font-bold">Коротко о конструкции</h2>
+              <p className="mt-2 text-sm leading-6">{grammarTheory(tense, form)}</p>
+              <p className="mt-3 font-semibold">{ruleTask.en}</p>
+              <p className="text-sm text-muted-foreground">{ruleTask.ru}</p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Попробовал {topic.practiced} из {topic.total} фраз · закрепил {topic.reinforced}.
+                Закрепление — несколько самостоятельных ответов, с возвратом к фразе позже.
+              </p>
+            </section>
+          )}
           <label className="flex min-h-11 items-center gap-3">
             <input
               type="checkbox"
@@ -133,7 +169,7 @@ export function GrammarRound({
 }: {
   tasks: GrammarTask[];
   typed: boolean;
-  onAnswer: (correct: boolean) => void;
+  onAnswer: (correct: boolean, taskId?: string) => void;
   onComplete: () => void;
   onNext: (items?: GrammarTask[]) => void;
   onExit: () => void;
@@ -196,7 +232,7 @@ export function GrammarRound({
         task={task}
         typed={typed}
         onAnswer={(correct) => {
-          onAnswer(correct);
+          onAnswer(correct, task.id);
           if (!correct) setMissed((values) => [...values, task]);
         }}
         onNext={() => setIndex((value) => value + 1)}
@@ -338,6 +374,9 @@ export function GrammarQuestion({
               : "Разберём конструкцию"}
           </p>
           <p className="mt-2 text-lg font-semibold">{task.en}</p>
+          <button className="btn-ghost mt-3 min-h-12" onClick={() => speak(task.en)}>
+            <Volume2 size={18} aria-hidden="true" /> Послушать фразу
+          </button>
           <button
             className="btn-primary mt-5 w-full"
             onClick={() => {

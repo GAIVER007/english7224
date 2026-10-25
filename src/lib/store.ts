@@ -51,6 +51,7 @@ export interface AppState {
   weeklyResult?: WeeklyResult;
   examResults?: Record<string, ExamResult>;
   grammarHistory?: boolean[];
+  grammarCards?: Record<string, CardState>;
   resultHistory?: ResultRecord[];
 }
 
@@ -72,6 +73,7 @@ export function createInitialState(): AppState {
     earnedBadgeIds: [],
     examResults: {},
     grammarHistory: [],
+    grammarCards: {},
     resultHistory: [],
   };
 }
@@ -155,6 +157,7 @@ const fieldSchemas = {
   earnedBadgeIds: z.array(z.enum(BADGE_IDS)),
   examResults: examResultsSchema,
   grammarHistory: z.array(z.boolean()).max(100),
+  grammarCards: z.record(cardSchema),
   resultHistory: z.array(
     z
       .object({
@@ -187,6 +190,7 @@ const migratedDefaultFields = new Set([
   "earnedBadgeIds",
   "examResults",
   "grammarHistory",
+  "grammarCards",
   "resultHistory",
 ]);
 

@@ -1,0 +1,11 @@
+feature,area,priority,original,clone,notes
+Теория перед упражнениями,grammar,must,publicly described,yes,Оригинальные объяснения девяти тем Simple
+Тематическая навигация,grammar,must,systematic course described,yes,Девять тем вместо двух фильтров
+Озвучивание, listening,should,native audio described,partial,Системный синтез речи после ответа
+Прогресс отдельных тем,progress,should,exact mechanism unknown,yes,Наш учёт практики и отложенного закрепления
+Повторение трудных фраз,review,must,exact algorithm unknown,yes,Наш SRS с сохранением и backup
+Экзамены,assessment,must,tests described,existing,Экзамены миссий и модулей уже есть
+Тематическая лексика,vocabulary,should,publicly described,existing,Существующий словарь курса и SRS
+Полный курс A0–C1,curriculum,could,publicly claimed,no,Текущий объём существенно меньше
+Видео и записи дикторов,content,could,publicly described,skip,Чужой лицензируемый контент не переносится
+Брендинг и тексты оригинала,brand,could,public,skip,Собственный интерфейс и материалы

@@ -26,6 +26,7 @@ import { SpeakingPractice } from "@/components/SpeakingPractice";
 import { mistakeWords } from "@/lib/mistakes";
 import { SkillPractice } from "@/components/SkillPractice";
 import { FreeTrainer } from "@/components/FreeTrainer";
+import { reviewGrammar } from "@/lib/grammar-review";
 import { appendGrammarResult } from "@/lib/free-trainer";
 
 export const Route = createFileRoute("/lesson")({
@@ -104,10 +105,14 @@ function LessonPage() {
         <TrainingHeader title="Свободная практика" detail="Базовая грамматика без спешки" />
         <FreeTrainer
           history={state.grammarHistory ?? []}
-          onAnswer={(correct) =>
+          cards={state.grammarCards ?? {}}
+          onAnswer={(correct, taskId) =>
             update((s) => ({
               ...s,
               grammarHistory: appendGrammarResult(s.grammarHistory ?? [], correct),
+              grammarCards: taskId
+                ? { ...s.grammarCards, [taskId]: reviewGrammar(s.grammarCards?.[taskId], correct) }
+                : (s.grammarCards ?? {}),
             }))
           }
           onComplete={() => update((s) => recordPractice(touchStreak(s)))}
