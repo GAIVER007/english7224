@@ -12,6 +12,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { OfflineApp } from "@/components/OfflineApp";
 import { useAppState } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -124,12 +125,37 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function CloudSync() {
+  useEffect(() => {
+    let active = true;
+    void import("@/lib/cloud-sync").then(({ startSync, stopSync }) => {
+      if (!active) return;
+      void supabase.auth.getUser().then(({ data }) => {
+        if (data.user) void startSync(data.user.id);
+      });
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_OUT") stopSync();
+        else if (session?.user && (event === "SIGNED_IN" || event === "INITIAL_SESSION"))
+          void startSync(session.user.id);
+      });
+      cleanup = () => data.subscription.unsubscribe();
+    });
+    let cleanup = () => {};
+    return () => {
+      active = false;
+      cleanup();
+    };
+  }, []);
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <CloudSync />
       <AppNotices />
       <OfflineApp />
       <Outlet />

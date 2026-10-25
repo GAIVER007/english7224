@@ -378,6 +378,16 @@ function subscribe(listener: () => void) {
   };
 }
 
+export function getAppState(): AppState {
+  ensureHydrated();
+  return snapshot.state;
+}
+
+/** Listen to every progress change (used by cloud sync). */
+export function onAppStateChange(listener: () => void) {
+  return subscribe(listener);
+}
+
 export function updateAppState(fn: (state: AppState) => AppState) {
   ensureHydrated();
   const normalized = normalizeState(fn(snapshot.state));
