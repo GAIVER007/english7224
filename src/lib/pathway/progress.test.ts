@@ -54,12 +54,20 @@ describe("six-stage pathway", () => {
   it("saves drafts and partial answers across backup restore without changing the legacy course", () => {
     const state = saveUnit({ ...createInitialState(), xp: 123, day: 7 }, pathUnits[0]!.id, {
       writing: "My saved draft",
+      speakingNotes: "Slow down and finish the sentence.",
+      speakingAttempts: 2,
+      speakingSeconds: 25,
       stage: 3,
       answers: { "0": "partial" },
     });
     const restored = parseBackup(createBackup(state)).state;
     expect(restored.pathway?.units[pathUnits[0]!.id]?.writing).toBe("My saved draft");
     expect(restored.pathway?.units[pathUnits[0]!.id]?.stage).toBe(3);
+    expect(restored.pathway?.units[pathUnits[0]!.id]?.speakingNotes).toBe(
+      "Slow down and finish the sentence.",
+    );
+    expect(restored.pathway?.units[pathUnits[0]!.id]?.speakingAttempts).toBe(2);
+    expect(restored.pathway?.units[pathUnits[0]!.id]?.speakingSeconds).toBe(25);
     expect(restored.xp).toBe(123);
     expect(restored.day).toBe(7);
   });

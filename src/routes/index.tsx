@@ -10,9 +10,8 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
-import { emptyPath } from "@/lib/pathway/state";
-import { duePathVocabulary } from "@/lib/pathway/vocabulary";
 import { CoursePath } from "@/components/CoursePath";
+import { PathwayPlan } from "@/components/PathwayPlan";
 import { lessons } from "@/lib/content";
 import { StudyPlan } from "@/components/StudyPlan";
 import { currentStreak, dueWords, studiedWords } from "@/lib/learning";
@@ -79,7 +78,6 @@ function Home() {
       </main>
     );
 
-  const courseWordsDue = duePathVocabulary(state).length;
   const due = dueWords(state).length;
   const studied = studiedWords(state).length;
   return (
@@ -104,23 +102,7 @@ function Home() {
         <h1>Сегодня</h1>
         <p>Ещё один шаг к свободному английскому.</p>
       </div>
-      <Link to="/course" search={{}} className="path-home-card">
-        <span className="eyebrow">Твоя программа · A0–C1</span>
-        <h2>Продолжить обучение</h2>
-        <p>
-          Текущий этап: {(state.pathway ?? emptyPath()).selected} · чтение, речь, письмо и практика
-        </p>
-        <span className="path-home-cta">
-          Открыть программу <ArrowRight size={18} aria-hidden="true" />
-        </span>
-      </Link>
-      {courseWordsDue > 0 && (
-        <Link to="/course" search={{ review: "due" }} className="btn-secondary w-full mb-5">
-          <Layers3 size={18} aria-hidden="true" />
-          Повторить слова курса · {courseWordsDue}
-          <ArrowRight size={18} aria-hidden="true" />
-        </Link>
-      )}
+      <PathwayPlan state={state} />
       <WeeklyRhythm state={state} />
       <section id="practice" className="scroll-mt-6">
         <SectionHeading title="Практика" aside={<span>Выбери навык</span>} />

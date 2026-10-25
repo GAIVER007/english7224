@@ -271,4 +271,22 @@ describe("course unit session", () => {
     });
     expect(saved.xp).toBe(50);
   });
+  it("preserves speaking reflection and recording metadata after remount", () => {
+    seedUnit({ stage: 4, speakingAttempts: 2, speakingSeconds: 18 });
+    const first = render(<Course />);
+    fireEvent.change(screen.getByLabelText("Что улучшить в следующей попытке"), {
+      target: { value: "Finish sentences without switching to Russian." },
+    });
+    first.unmount();
+    render(<Course />);
+    expect(screen.getByLabelText("Что улучшить в следующей попытке")).toHaveValue(
+      "Finish sentences without switching to Russian.",
+    );
+    const saved = JSON.parse(localStorage.getItem("speakup-state-v1")!);
+    expect(saved.pathway.units[unit.id]).toMatchObject({
+      speakingAttempts: 2,
+      speakingSeconds: 18,
+      speakingNotes: "Finish sentences without switching to Russian.",
+    });
+  });
 });

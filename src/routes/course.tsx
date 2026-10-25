@@ -5,7 +5,10 @@ import { shuffle } from "@/lib/learning";
 import { useAppState, speak } from "@/lib/store";
 import { BottomNav, TrainingHeader } from "@/components/TrainingUI";
 import { RecallPractice } from "@/components/RecallPractice";
+import { WritingFeedback } from "@/components/WritingFeedback";
+import { SpeakingRecorder } from "@/components/SpeakingRecorder";
 import { pathUnits, PATH_LEVELS, levelTitles, unitsForLevel, levelQuestions } from "@/lib/pathway";
+import { revisionUnits } from "@/lib/pathway/plan";
 import { emptyPath, emptyUnit, examBankVersion } from "@/lib/pathway/state";
 import {
   saveUnit,
@@ -158,10 +161,7 @@ function Course() {
   const dueWords = duePathVocabulary(state);
   const learnedWords = learnedPathVocabularyCount(state);
   const nextWordReview = nextPathVocabularyDue(state);
-  const lastExam = [...path.history].reverse().find((r) => r.id === `exam:${path.selected}`);
-  const reviewUnits = (lastExam?.reviewUnitIds ?? [])
-    .map((id) => pathUnits.find((u) => u.id === id))
-    .filter((u): u is PathUnit => Boolean(u));
+  const reviewUnits = revisionUnits(state);
   return (
     <main className="app-shell focus-shell">
       <TrainingHeader title="Программа A0–C1" detail="Учись по навыкам, в своём темпе" />
@@ -474,6 +474,7 @@ function UnitSession({ unit }: { unit: PathUnit }) {
               {unit.writing.model}
             </p>
           </details>
+          <WritingFeedback text={progress.writing} unit={unit} />
           <h2 className="font-semibold">Проверь свой текст</h2>
           <Checks
             items={unit.writing.checklist}
@@ -496,6 +497,43 @@ function UnitSession({ unit }: { unit: PathUnit }) {
             </p>
             <Audio text={unit.speaking.model} />
           </details>
+          <SpeakingRecorder
+            model={unit.speaking.model}
+            onRecorded={(seconds) =>
+              update((s) => {
+                const current = s.pathway?.units[unit.id] ?? emptyUnit();
+                return saveUnit(s, unit.id, {
+                  speakingAttempts: (current.speakingAttempts ?? 0) + 1,
+                  speakingSeconds: seconds,
+                  speakingChecks: [false, false, false],
+                });
+              })
+            }
+          />
+          {(progress.speakingAttempts ?? 0) > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Записанных попыток: {progress.speakingAttempts}.
+              {progress.speakingSeconds != null && ` Последняя: ${progress.speakingSeconds} сек.`}{" "}
+              Сохраняются эти показатели и заметки, сам аудиофайл — только пока открыт этап
+              «Сказать».
+            </p>
+          )}
+          <label className="block font-medium" htmlFor="speaking-notes">
+            Что улучшить в следующей попытке
+          </label>
+          <textarea
+            id="speaking-notes"
+            className="input-field w-full min-h-24"
+            maxLength={2000}
+            value={progress.speakingNotes ?? ""}
+            onChange={(e) => patch({ speakingNotes: e.target.value })}
+            placeholder="Например: меньше пауз, чётче окончания, добавить пример"
+          />
+          {storageError && (
+            <p role="alert" className="text-sm text-destructive">
+              Прогресс речи не сохранился. Проверь доступ к хранилищу устройства.
+            </p>
+          )}
           <Checks
             items={unit.speaking.checklist}
             values={progress.speakingChecks}
