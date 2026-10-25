@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createInitialState, resetAppState, updateAppState } from "@/lib/store";
-import { pathUnits } from "@/lib/pathway";
+import { pathUnits, levelQuestions, unitsForLevel } from "@/lib/pathway";
 import { emptyPath, emptyUnit } from "@/lib/pathway/state";
 
 const { routeSearch } = vi.hoisted(() => ({
@@ -195,5 +195,80 @@ describe("course unit session", () => {
     fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
     expect(screen.getByRole("heading", { name: "Отлично закреплено!" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Завершить практику" })).toBeInTheDocument();
+  });
+  it("grades a new exam and keeps skill results and revision links", () => {
+    const questions = levelQuestions("A0");
+    updateAppState(() => ({
+      ...createInitialState(),
+      pathway: {
+        ...emptyPath(),
+        units: Object.fromEntries(
+          unitsForLevel("A0").map((u) => [u.id, { ...emptyUnit(), passed: true, best: 6 }]),
+        ),
+        exams: {
+          A0: {
+            version: 2,
+            answers: Object.fromEntries(
+              questions.map((q, i) => [
+                q.id,
+                i === 0 ? q.options.find((o) => o !== q.answer)! : q.answer,
+              ]),
+            ),
+            submitted: false,
+            passed: false,
+            best: 0,
+            attempts: 0,
+          },
+        },
+      },
+    }));
+    routeSearch.value = { exam: "A0" };
+    render(<Course />);
+    expect(screen.queryByText("Текст аудио для разбора")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Завершить контрольную" }));
+    expect(screen.getByRole("heading", { name: "Результат: 23/24" })).toBeInTheDocument();
+    expect(screen.getByText("Грамматика: 7/8")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Что повторить" })).toBeInTheDocument();
+    const saved = JSON.parse(localStorage.getItem("speakup-state-v1")!);
+    expect(saved.pathway.history[0].reviewUnitIds).toEqual([questions[0]!.unitId]);
+    fireEvent.click(screen.getByRole("button", { name: "Новая попытка" }));
+    expect(screen.getByRole("button", { name: "Завершить контрольную" })).toBeDisabled();
+    expect(JSON.parse(localStorage.getItem("speakup-state-v1")!).pathway.exams.A0.version).toBe(2);
+  });
+  it("preserves a submitted legacy exam and switches its retake to the new bank", () => {
+    const questions = levelQuestions("A0", 1);
+    updateAppState(() => ({
+      ...createInitialState(),
+      xp: 50,
+      pathway: {
+        ...emptyPath(),
+        units: Object.fromEntries(
+          unitsForLevel("A0").map((u) => [u.id, { ...emptyUnit(), passed: true, best: 6 }]),
+        ),
+        exams: {
+          A0: {
+            answers: Object.fromEntries(questions.map((q) => [q.id, q.answer])),
+            submitted: true,
+            passed: true,
+            best: 24,
+            attempts: 1,
+          },
+        },
+      },
+    }));
+    routeSearch.value = { exam: "A0" };
+    render(<Course />);
+    expect(screen.getByRole("heading", { name: "Результат: 24/24" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Новая попытка" }));
+    expect(screen.getByRole("button", { name: "Завершить контрольную" })).toBeDisabled();
+    const saved = JSON.parse(localStorage.getItem("speakup-state-v1")!);
+    expect(saved.pathway.exams.A0).toMatchObject({
+      version: 2,
+      answers: {},
+      passed: true,
+      best: 24,
+      attempts: 1,
+    });
+    expect(saved.xp).toBe(50);
   });
 });

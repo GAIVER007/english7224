@@ -6,7 +6,7 @@ import { useAppState, speak } from "@/lib/store";
 import { BottomNav, TrainingHeader } from "@/components/TrainingUI";
 import { RecallPractice } from "@/components/RecallPractice";
 import { pathUnits, PATH_LEVELS, levelTitles, unitsForLevel, levelQuestions } from "@/lib/pathway";
-import { emptyPath, emptyUnit } from "@/lib/pathway/state";
+import { emptyPath, emptyUnit, examBankVersion } from "@/lib/pathway/state";
 import {
   saveUnit,
   submitUnit,
@@ -158,6 +158,10 @@ function Course() {
   const dueWords = duePathVocabulary(state);
   const learnedWords = learnedPathVocabularyCount(state);
   const nextWordReview = nextPathVocabularyDue(state);
+  const lastExam = [...path.history].reverse().find((r) => r.id === `exam:${path.selected}`);
+  const reviewUnits = (lastExam?.reviewUnitIds ?? [])
+    .map((id) => pathUnits.find((u) => u.id === id))
+    .filter((u): u is PathUnit => Boolean(u));
   return (
     <main className="app-shell focus-shell">
       <TrainingHeader title="Программа A0–C1" detail="Учись по навыкам, в своём темпе" />
@@ -268,8 +272,8 @@ function Course() {
       <section className="card-soft p-5 mt-6 space-y-3">
         <h2 className="text-xl font-semibold">Контрольная {path.selected}</h2>
         <p>
-          24 вопроса по материалу этапа. Порог — 80%. Откроется после всех тем и самостоятельной
-          проверки письма и речи.
+          24 новых вопроса: грамматика, чтение и аудирование. Порог — 80%. Откроется после всех тем
+          и самостоятельной проверки письма и речи.
         </p>
         {canTakeLevel(state, path.selected) ? (
           <Link className="btn-primary" to="/course" search={{ exam: path.selected }}>
@@ -279,6 +283,31 @@ function Course() {
           <p className="text-sm text-muted-foreground">Осталось тем: {units.length - passed}</p>
         )}
       </section>
+      {reviewUnits.length > 0 && (
+        <section className="card-soft p-5 mt-5 space-y-3" aria-labelledby="exam-review-title">
+          <h2 id="exam-review-title" className="text-xl font-semibold">
+            Закрепить после контрольной
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Темы из последней попытки {path.selected}, где были ошибки. Повтори их и проверь себя
+            снова.
+          </p>
+          <div className="grid gap-2">
+            {reviewUnits.map((u) => (
+              <Link
+                key={u.id}
+                to="/course"
+                search={{ unit: u.id }}
+                onClick={() => update((s) => saveUnit(s, u.id, { stage: 0 }))}
+                className="btn-secondary justify-start"
+              >
+                {u.title}
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
       <details className="card-soft p-5 mt-5">
         <summary className="cursor-pointer font-semibold">
           История программы · {path.history.length}
@@ -617,16 +646,21 @@ function VocabularySession({ scope }: { scope: string }) {
   );
 }
 function LevelExam({ level }: { level: PathLevel }) {
-  const { state, update } = useAppState();
+  const { state, update, storageError } = useAppState();
   const path = state.pathway ?? emptyPath();
   const exam = path.exams[level] ?? {
+    version: 2 as const,
     answers: {},
     submitted: false,
     passed: false,
     best: 0,
     attempts: 0,
   };
-  const questions = levelQuestions(level);
+  const version = examBankVersion(exam);
+  const questions = levelQuestions(level, version);
+  const missedUnits = [
+    ...new Set(questions.filter((q) => exam.answers[q.id] !== q.answer).map((q) => q.unitId)),
+  ];
   if (!canTakeLevel(state, level))
     return (
       <main className="app-shell">
@@ -642,21 +676,47 @@ function LevelExam({ level }: { level: PathLevel }) {
       <Link to="/course" search={{}} className="btn-ghost">
         К программе
       </Link>
+      {version === 1 && (
+        <p className="mt-4 text-sm">
+          Сохранена попытка прежней контрольной. Новая попытка откроет отдельные задания; прежние
+          достижения сохранятся.
+        </p>
+      )}
       <p className="my-5">
         Ответы сохраняются. Разбор появится после завершения всех 24 вопросов. Порог — 20 верных.
       </p>
+      <p className="mb-5 text-sm text-muted-foreground">
+        Здесь проверяются три навыка. Письмо и речь оцениваются отдельно по критериям в темах. При
+        пересдаче используется тот же набор заданий.
+      </p>
+      {storageError && (
+        <p role="alert" className="text-destructive mb-4">
+          Ответы не сохранились на устройстве. Проверь доступ к хранилищу.
+        </p>
+      )}
       <div className="space-y-6">
         {questions.map((q, i) => (
           <section key={q.id} className="space-y-3">
-            {q.skill === "reading" && questions[i - 1]?.unit.id !== q.unit.id && (
+            {q.skill === "reading" && questions[i - 1]?.passage !== q.passage && (
               <p lang="en" className="card-soft p-5 leading-7">
-                {q.unit.reading}
+                {q.passage}
               </p>
             )}
-            {q.skill === "listening" && questions[i - 1]?.unit.id !== q.unit.id && (
-              <Audio text={q.unit.listening} />
+            {q.skill === "listening" && questions[i - 1]?.passage !== q.passage && (
+              <Audio text={q.passage ?? ""} />
             )}
+            {exam.submitted &&
+              q.skill === "listening" &&
+              questions[i - 1]?.passage !== q.passage && (
+                <details className="card-soft p-4">
+                  <summary>Текст аудио для разбора</summary>
+                  <p lang="en" className="mt-3 leading-7">
+                    {q.passage}
+                  </p>
+                </details>
+              )}
             <Question
+              key={`${version}-${q.id}-${exam.attempts}`}
               question={q}
               index={i}
               value={exam.answers[q.id] ?? ""}
@@ -670,7 +730,7 @@ function LevelExam({ level }: { level: PathLevel }) {
                       ...p,
                       exams: {
                         ...p.exams,
-                        [level]: { ...exam, answers: { ...exam.answers, [q.id]: value } },
+                        [level]: { ...exam, version, answers: { ...exam.answers, [q.id]: value } },
                       },
                     },
                   };
@@ -690,6 +750,34 @@ function LevelExam({ level }: { level: PathLevel }) {
             Лучший: {exam.best}/{questions.length}.{" "}
             {exam.passed ? "Контрольная пройдена." : "Повтори темы, в которых были ошибки."}
           </p>
+          <ul className="space-y-2">
+            {(["grammar", "reading", "listening"] as const).map((skill) => (
+              <li key={skill}>
+                {{ grammar: "Грамматика", reading: "Чтение", listening: "Аудирование" }[skill]}:{" "}
+                {
+                  questions.filter((q) => q.skill === skill && exam.answers[q.id] === q.answer)
+                    .length
+                }
+                /8
+              </li>
+            ))}
+          </ul>
+          {missedUnits.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold">Что повторить</h3>
+              {missedUnits.map((id) => (
+                <Link
+                  key={id}
+                  to="/course"
+                  search={{ unit: id }}
+                  onClick={() => update((s) => saveUnit(s, id, { stage: 0 }))}
+                  className="btn-secondary w-full justify-start"
+                >
+                  {pathUnits.find((u) => u.id === id)?.title}
+                </Link>
+              ))}
+            </div>
+          )}
           <button
             className="btn-secondary"
             onClick={() =>
@@ -699,7 +787,7 @@ function LevelExam({ level }: { level: PathLevel }) {
                   ...(s.pathway ?? emptyPath()),
                   exams: {
                     ...s.pathway?.exams,
-                    [level]: { ...exam, answers: {}, submitted: false },
+                    [level]: { ...exam, version: 2, answers: {}, submitted: false },
                   },
                 },
               }))

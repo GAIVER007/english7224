@@ -103,6 +103,7 @@ describe("six-stage pathway", () => {
         ...path,
         exams: {
           A0: {
+            version: 2,
             answers: Object.fromEntries(levelQuestions("A0").map((q) => [q.id, q.answer])),
             submitted: false,
             passed: false,

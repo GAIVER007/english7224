@@ -1,6 +1,10 @@
 import { beginnerUnits } from "./beginner";
 import { intermediateUnits } from "./intermediate";
 import { advancedUnits } from "./advanced";
+import { beginnerExamQuestions } from "./exam-beginner";
+import { intermediateExamQuestions } from "./exam-intermediate";
+import { advancedExamQuestions } from "./exam-advanced";
+import type { ExamQuestion } from "./exam-types";
 import type { PathLevel } from "./types";
 export { PATH_LEVELS } from "./types";
 export const pathUnits = [...beginnerUnits, ...intermediateUnits, ...advancedUnits];
@@ -13,11 +17,24 @@ export const levelTitles: Record<PathLevel, string> = {
   C1: "Точность и сложные смыслы",
 };
 export const unitsForLevel = (level: PathLevel) => pathUnits.filter((u) => u.level === level);
-export function levelQuestions(level: PathLevel) {
+export function levelQuestions(level: PathLevel, version = 2): ExamQuestion[] {
+  if (version === 2)
+    return { ...beginnerExamQuestions, ...intermediateExamQuestions, ...advancedExamQuestions }[
+      level
+    ];
   return unitsForLevel(level).flatMap((unit, index) => {
     const skill = index % 3;
     return unit.questions
-      .map((question, i) => ({ ...question, id: `${unit.id}:${i}`, unit }))
+      .map((question, i) => ({
+        ...question,
+        id: `${unit.id}:${i}`,
+        unitId: unit.id,
+        ...(question.skill === "reading"
+          ? { passage: unit.reading }
+          : question.skill === "listening"
+            ? { passage: unit.listening }
+            : {}),
+      }))
       .filter((_, i) => i >= skill * 2 && i < skill * 2 + 2);
   });
 }

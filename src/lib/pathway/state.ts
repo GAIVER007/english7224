@@ -37,6 +37,7 @@ export const pathStateSchema = z.object({
     z.enum(PATH_LEVELS),
     z
       .object({
+        version: z.union([z.literal(1), z.literal(2)]).optional(),
         answers: z.record(z.string()),
         submitted: z.boolean(),
         passed: z.boolean(),
@@ -57,6 +58,11 @@ export const pathStateSchema = z.object({
         correct: count,
         total: count.refine((n): boolean => n === 6 || n === 24),
         passed: z.boolean(),
+        examVersion: z.union([z.literal(1), z.literal(2)]).optional(),
+        reviewUnitIds: z
+          .array(z.string().regex(/^(a0|a1|a2|b1|b2|c1)-(0[1-9]|1[0-2])$/))
+          .max(12)
+          .optional(),
       })
       .refine(
         (r) =>
@@ -83,4 +89,8 @@ export function emptyUnit(): PathUnitProgress {
     attempts: 0,
     due: 0,
   };
+}
+
+export function examBankVersion(exam?: PathState["exams"]["A0"]): 1 | 2 {
+  return exam?.version ?? (exam?.submitted || Object.keys(exam?.answers ?? {}).length > 0 ? 1 : 2);
 }

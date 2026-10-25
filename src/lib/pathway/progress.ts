@@ -1,6 +1,6 @@
 import { recordPractice } from "../motivation";
 import { touchStreak, type AppState } from "../store";
-import { emptyPath, emptyUnit, type PathUnitProgress } from "./state";
+import { emptyPath, emptyUnit, examBankVersion, type PathUnitProgress } from "./state";
 import { levelQuestions, unitsForLevel } from "./index";
 import type { PathLevel, PathUnit } from "./types";
 export function wordCount(text: string) {
@@ -62,7 +62,7 @@ export function canTakeLevel(state: AppState, level: PathLevel) {
 export function submitLevel(state: AppState, level: PathLevel, now = Date.now()): AppState {
   const path = state.pathway ?? emptyPath();
   const exam = path.exams[level];
-  const questions = levelQuestions(level);
+  const questions = levelQuestions(level, examBankVersion(exam));
   if (
     !exam ||
     exam.submitted ||
@@ -91,7 +91,19 @@ export function submitLevel(state: AppState, level: PathLevel, now = Date.now())
           },
           history: [
             ...path.history,
-            { id: `exam:${level}`, at: now, correct, total: questions.length, passed },
+            {
+              id: `exam:${level}`,
+              at: now,
+              correct,
+              total: questions.length,
+              passed,
+              examVersion: examBankVersion(exam),
+              reviewUnitIds: [
+                ...new Set(
+                  questions.filter((q) => exam.answers[q.id] !== q.answer).map((q) => q.unitId),
+                ),
+              ],
+            },
           ],
         },
       },
