@@ -1,3 +1,6 @@
+import { beginnerExamQuestionsB } from "./exam-beginner-b";
+import { intermediateExamQuestionsB } from "./exam-intermediate-b";
+import { advancedExamQuestionsB } from "./exam-advanced-b";
 import { beginnerUnits } from "./beginner";
 import { intermediateUnits } from "./intermediate";
 import { advancedUnits } from "./advanced";
@@ -17,7 +20,11 @@ export const levelTitles: Record<PathLevel, string> = {
   C1: "Точность и сложные смыслы",
 };
 export const unitsForLevel = (level: PathLevel) => pathUnits.filter((u) => u.level === level);
-export function levelQuestions(level: PathLevel, version = 2): ExamQuestion[] {
+export function levelQuestions(level: PathLevel, version: 1 | 2 | 3 = 2): ExamQuestion[] {
+  if (version === 3)
+    return { ...beginnerExamQuestionsB, ...intermediateExamQuestionsB, ...advancedExamQuestionsB }[
+      level
+    ];
   if (version === 2)
     return { ...beginnerExamQuestions, ...intermediateExamQuestions, ...advancedExamQuestions }[
       level

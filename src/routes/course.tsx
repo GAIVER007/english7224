@@ -17,6 +17,7 @@ import {
   wordCount,
   canTakeLevel,
   submitLevel,
+  startNextLevelAttempt,
 } from "@/lib/pathway/progress";
 import type { PathLevel, PathQuestion, PathUnit } from "@/lib/pathway/types";
 import {
@@ -322,6 +323,15 @@ function Course() {
                 {pathUnits.find((u) => u.id === r.id)?.title ??
                   r.id.replace("exam:", "Контрольная ")}{" "}
                 · {r.correct}/{r.total} · {r.passed ? "Пройдено" : "Повторить"}
+                {r.id.startsWith("exam:") && r.examVersion !== undefined && (
+                  <span>
+                    {" "}
+                    ·{" "}
+                    {r.examVersion === 1
+                      ? "Архивный вариант"
+                      : `Вариант ${r.examVersion === 2 ? 1 : 2}`}
+                  </span>
+                )}
                 <br />
                 {new Date(r.at).toLocaleString("ru-RU")}
               </li>
@@ -710,7 +720,12 @@ function LevelExam({ level }: { level: PathLevel }) {
     );
   return (
     <main className="app-shell focus-shell">
-      <TrainingHeader title={`Контрольная ${level}`} detail="Проверка изученного материала" />
+      <TrainingHeader
+        title={`Контрольная ${level}`}
+        detail={
+          version === 1 ? "Архивная попытка" : `Вариант ${version === 2 ? 1 : 2} из 2 · 24 вопроса`
+        }
+      />
       <Link to="/course" search={{}} className="btn-ghost">
         К программе
       </Link>
@@ -724,8 +739,8 @@ function LevelExam({ level }: { level: PathLevel }) {
         Ответы сохраняются. Разбор появится после завершения всех 24 вопросов. Порог — 20 верных.
       </p>
       <p className="mb-5 text-sm text-muted-foreground">
-        Здесь проверяются три навыка. Письмо и речь оцениваются отдельно по критериям в темах. При
-        пересдаче используется тот же набор заданий.
+        Здесь проверяются три навыка. Письмо и речь оцениваются отдельно по критериям в темах. Новые
+        попытки чередуют два варианта с разными заданиями. После двух вариантов вопросы повторяются.
       </p>
       {storageError && (
         <p role="alert" className="text-destructive mb-4">
@@ -818,18 +833,7 @@ function LevelExam({ level }: { level: PathLevel }) {
           )}
           <button
             className="btn-secondary"
-            onClick={() =>
-              update((s) => ({
-                ...s,
-                pathway: {
-                  ...(s.pathway ?? emptyPath()),
-                  exams: {
-                    ...s.pathway?.exams,
-                    [level]: { ...exam, version: 2, answers: {}, submitted: false },
-                  },
-                },
-              }))
-            }
+            onClick={() => update((s) => startNextLevelAttempt(s, level))}
           >
             Новая попытка
           </button>

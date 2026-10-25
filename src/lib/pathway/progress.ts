@@ -113,3 +113,25 @@ export function submitLevel(state: AppState, level: PathLevel, now = Date.now())
     "language",
   );
 }
+
+/** Keep an in-progress exam pinned; rotate variants only after a submitted attempt. */
+export function startNextLevelAttempt(state: AppState, level: PathLevel): AppState {
+  const path = state.pathway ?? emptyPath();
+  const exam = path.exams[level];
+  if (!exam?.submitted) return state;
+  return {
+    ...state,
+    pathway: {
+      ...path,
+      exams: {
+        ...path.exams,
+        [level]: {
+          ...exam,
+          version: examBankVersion(exam) === 2 ? 3 : 2,
+          answers: {},
+          submitted: false,
+        },
+      },
+    },
+  };
+}

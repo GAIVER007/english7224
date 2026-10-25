@@ -3,9 +3,9 @@ import { createInitialState, type AppState } from "../store";
 import { createBackup, parseBackup } from "../backup";
 import { PATH_LEVELS, levelQuestions, pathUnits, unitsForLevel } from "./index";
 import { emptyPath, emptyUnit, examBankVersion } from "./state";
-import { submitLevel } from "./progress";
+import { submitLevel, startNextLevelAttempt } from "./progress";
 
-function prepared(version: 1 | 2): AppState {
+function prepared(version: 1 | 2 | 3): AppState {
   const state = createInitialState();
   state.pathway = {
     ...emptyPath(),
@@ -52,6 +52,73 @@ describe("independent level assessments", () => {
       }
     }
   });
+  it("provides a distinct balanced second variant at every level", () => {
+    const oldPrompts = new Set([
+      ...pathUnits.flatMap((u) => u.questions.map((q) => q.prompt)),
+      ...PATH_LEVELS.flatMap((level) => levelQuestions(level, 2).map((q) => q.prompt)),
+    ]);
+    const oldPassages = new Set([
+      ...pathUnits.flatMap((u) => [u.reading, u.listening]),
+      ...PATH_LEVELS.flatMap((level) => levelQuestions(level, 2).map((q) => q.passage)),
+    ]);
+    const ids = new Set(PATH_LEVELS.flatMap((level) => levelQuestions(level, 2).map((q) => q.id)));
+    for (const level of PATH_LEVELS) {
+      const questions = levelQuestions(level, 3);
+      expect(questions).toHaveLength(24);
+      for (const skill of ["grammar", "reading", "listening"])
+        expect(questions.filter((q) => q.skill === skill)).toHaveLength(8);
+      for (const q of questions) {
+        expect(ids.has(q.id), q.id).toBe(false);
+        ids.add(q.id);
+        expect(oldPrompts.has(q.prompt), q.id).toBe(false);
+        expect(q.options.filter((option) => option === q.answer)).toHaveLength(1);
+        expect(new Set(q.options).size).toBe(q.options.length);
+        expect(q.options.length).toBeGreaterThanOrEqual(3);
+        expect(pathUnits.find((u) => u.id === q.unitId)?.level, q.id).toBe(level);
+        expect(q.explanation.length).toBeGreaterThan(15);
+        if (q.skill !== "grammar") {
+          expect(q.passage?.length).toBeGreaterThan(30);
+          expect(oldPassages.has(q.passage), q.id).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("pins partial variant answers through backup and rotates only after submission", () => {
+    const state = prepared(3);
+    const questions = levelQuestions("A0", 3);
+    state.pathway!.exams.A0!.answers = { [questions[0]!.id]: questions[0]!.answer };
+    expect(startNextLevelAttempt(state, "A0")).toBe(state);
+    const restored = parseBackup(createBackup(state)).state;
+    expect(examBankVersion(restored.pathway!.exams.A0)).toBe(3);
+    expect(restored.pathway!.exams.A0!.answers).toEqual(state.pathway!.exams.A0!.answers);
+  });
+
+  it("alternates both variants without repeating XP or changing historical grades", () => {
+    let state = submitLevel(prepared(2), "A0", 1000);
+    expect(state.xp).toBe(50);
+    state = startNextLevelAttempt(state, "A0");
+    expect(state.pathway!.exams.A0).toMatchObject({
+      version: 3,
+      answers: {},
+      best: 24,
+      passed: true,
+    });
+    state.pathway!.exams.A0!.answers = Object.fromEntries(
+      levelQuestions("A0", 3).map((q) => [q.id, q.answer]),
+    );
+    state = submitLevel(parseBackup(createBackup(state)).state, "A0", 2000);
+    expect(state.xp).toBe(50);
+    expect(state.pathway!.history.map((r) => [r.examVersion, r.correct])).toEqual([
+      [2, 24],
+      [3, 24],
+    ]);
+    const next = startNextLevelAttempt(state, "A0");
+    expect(next.pathway!.exams.A0!.version).toBe(2);
+    expect(next.pathway!.exams.A0!.attempts).toBe(2);
+    expect(next.pathway!.history).toEqual(state.pathway!.history);
+  });
+
   it("keeps old saved answers gradeable after the question bank changes", () => {
     const state = prepared(1);
     delete state.pathway!.exams.A0!.version;

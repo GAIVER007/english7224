@@ -233,7 +233,7 @@ describe("course unit session", () => {
     expect(saved.pathway.history[0].reviewUnitIds).toEqual([questions[0]!.unitId]);
     fireEvent.click(screen.getByRole("button", { name: "Новая попытка" }));
     expect(screen.getByRole("button", { name: "Завершить контрольную" })).toBeDisabled();
-    expect(JSON.parse(localStorage.getItem("speakup-state-v1")!).pathway.exams.A0.version).toBe(2);
+    expect(JSON.parse(localStorage.getItem("speakup-state-v1")!).pathway.exams.A0.version).toBe(3);
   });
   it("preserves a submitted legacy exam and switches its retake to the new bank", () => {
     const questions = levelQuestions("A0", 1);
