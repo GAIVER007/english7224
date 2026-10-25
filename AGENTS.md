@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Learner progress lives in browser localStorage via src/lib/store.ts and lesson content in src/lib/content.ts — no backend yet; move to Cloud when accounts are added.
+- Signed-in learners' progress syncs to Cloud table user_progress via src/lib/cloud-sync.ts (localStorage stays the working copy; copy with more XP wins on sign-in) — keeps rating across devices.
