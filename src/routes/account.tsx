@@ -8,7 +8,10 @@ export const Route = createFileRoute("/account")({
   head: () => ({
     meta: [
       { title: "Аккаунт — SpeakUp" },
-      { name: "description", content: "Войдите, чтобы прогресс и рейтинг сохранялись на всех устройствах." },
+      {
+        name: "description",
+        content: "Войдите, чтобы прогресс и рейтинг сохранялись на всех устройствах.",
+      },
       { property: "og:title", content: "Аккаунт — SpeakUp" },
       { property: "og:description", content: "Прогресс и рейтинг на телефоне и компьютере." },
     ],
@@ -100,7 +103,11 @@ function AccountPage() {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <button className="btn-primary w-full" disabled={busy}>
             {busy ? "Вхожу…" : "Войти"}
           </button>
