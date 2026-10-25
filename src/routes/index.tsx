@@ -65,6 +65,9 @@ function Home() {
             Я уже знаю свой уровень
           </Link>
         </div>
+        <Link to="/account" className="btn-ghost">
+          Войти в аккаунт
+        </Link>
         <div className="coach-note">
           <Sparkles size={20} aria-hidden="true" />
           <p>
@@ -90,6 +93,9 @@ function Home() {
             <Zap size={15} className="text-primary" aria-hidden="true" />
             {state.xp} XP
           </span>
+          <Link to="/account" className="status-pill" aria-label="Аккаунт">
+            👤
+          </Link>
         </div>
       </header>
       <div className="home-intro">
