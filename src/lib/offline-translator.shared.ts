@@ -103,6 +103,13 @@ export function isCompletePinnedModelManifest(
   files: string[],
   model: OfflineModelIdentity,
 ): boolean {
+  const requiredFiles = new Set([
+    "config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "onnx/encoder_model_quantized.onnx",
+    "onnx/decoder_model_merged_quantized.onnx",
+  ]);
   const revisionPrefix = `/${model.id}/resolve/${model.revision}/`;
   const belongsToPinnedRevision = files.every((file) => {
     try {
@@ -112,12 +119,17 @@ export function isCompletePinnedModelManifest(
       return false;
     }
   });
+  const relativeFiles = files.map((file) => {
+    try {
+      return new URL(file).pathname.slice(revisionPrefix.length);
+    } catch {
+      return "";
+    }
+  });
   return (
-    files.length > 0 &&
+    files.length === new Set(files).size &&
     belongsToPinnedRevision &&
-    files.filter((file) => file.endsWith(".onnx")).length >= 2 &&
-    files.some((file) => file.endsWith("/config.json")) &&
-    files.some((file) => file.endsWith("/tokenizer.json") || file.endsWith(".spm"))
+    [...requiredFiles].every((file) => relativeFiles.includes(file))
   );
 }
 

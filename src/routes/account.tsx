@@ -1,7 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getSyncStatus, onSyncStatus, type SyncStatus } from "@/lib/cloud-sync";
+import {
+  getSyncStatus,
+  onSyncStatus,
+  getSyncConflict,
+  resolveSyncConflict,
+  retrySync,
+  type SyncStatus,
+} from "@/lib/cloud-sync";
+import { SyncConflictPanel } from "@/components/SyncConflictPanel";
 import { useAppState } from "@/lib/store";
 
 export const Route = createFileRoute("/account")({
@@ -24,28 +32,48 @@ const statusText: Record<SyncStatus, string> = {
   loading: "Загружаю прогресс…",
   saving: "Сохраняю…",
   saved: "Прогресс сохранён в аккаунте ✓",
-  error: "Не удалось сохранить. Проверьте интернет — попробую снова при следующем действии.",
+  error:
+    "Синхронизация не завершена. Изменения остаются на этом устройстве. Проверьте интернет и повторите попытку.",
+  conflict: "Нужно выбрать версию спорных изменений.",
 };
 
 function AccountPage() {
   const { state } = useAppState();
   const [email, setEmail] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [conflict, setConflict] = useState(getSyncConflict);
   const [sync, setSync] = useState<SyncStatus>(getSyncStatus());
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    void supabase.auth.getUser().then(({ data }) => {
-      setEmail(data.user?.email ?? null);
+    let active = true;
+    let authChanged = false;
+    void supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (!active || authChanged) return;
+        setEmail(data.user?.email ?? null);
+        setChecked(true);
+      })
+      .catch(() => {
+        if (!active || authChanged) return;
+        setChecked(true);
+        setError("Не удалось проверить аккаунт. Локальные занятия доступны без входа.");
+      });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+      authChanged = true;
+      setEmail(session?.user.email ?? null);
       setChecked(true);
     });
-    const { data } = supabase.auth.onAuthStateChange((_e, session) =>
-      setEmail(session?.user.email ?? null),
-    );
-    const off = onSyncStatus(setSync);
+    const off = onSyncStatus((status) => {
+      setSync(status);
+      setConflict(getSyncConflict());
+    });
     return () => {
+      active = false;
       data.subscription.unsubscribe();
       off();
     };
@@ -55,9 +83,14 @@ function AccountPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword(form);
-    setBusy(false);
-    if (error) setError("Неверная почта или пароль.");
+    try {
+      const { error } = await supabase.auth.signInWithPassword(form);
+      if (error) setError("Не удалось войти. Проверь почту, пароль и подключение.");
+    } catch {
+      setError("Нет связи с аккаунтом. Проверь интернет и повтори вход.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -71,10 +104,19 @@ function AccountPage() {
           <p>
             Вы вошли как <b>{email}</b>
           </p>
-          <p className="text-sm">{statusText[sync]}</p>
+          <p role="status" className="text-sm">
+            {statusText[sync]}
+          </p>
+          {sync === "error" && (
+            <button className="btn-secondary w-full" onClick={() => void retrySync()}>
+              Повторить синхронизацию
+            </button>
+          )}
+          {conflict && <SyncConflictPanel conflict={conflict} onResolve={resolveSyncConflict} />}
           <p className="text-sm text-muted-foreground">
-            Очки: {state.xp} · Результатов: {state.resultHistory?.length ?? 0}. Войдите с этой же
-            почтой на телефоне — прогресс подтянется автоматически.
+            Очки: {state.xp} · Результатов: {state.resultHistory?.length ?? 0}. Для другого
+            устройства используйте ту же почту. Если есть спорные изменения, приложение предложит
+            выбрать версию.
           </p>
           <button className="btn-ghost" onClick={() => void supabase.auth.signOut()}>
             Выйти
@@ -85,7 +127,11 @@ function AccountPage() {
           <p className="text-sm text-muted-foreground">
             Войдите, чтобы рейтинг и результаты сохранялись в аккаунте и были на всех устройствах.
           </p>
+          <label htmlFor="account-email" className="block text-sm font-medium">
+            Почта
+          </label>
           <input
+            id="account-email"
             className="w-full rounded-md border bg-background p-3"
             type="email"
             placeholder="Почта"
@@ -94,7 +140,11 @@ function AccountPage() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
           />
+          <label htmlFor="account-password" className="block text-sm font-medium">
+            Пароль
+          </label>
           <input
+            id="account-password"
             className="w-full rounded-md border bg-background p-3"
             type="password"
             placeholder="Пароль"

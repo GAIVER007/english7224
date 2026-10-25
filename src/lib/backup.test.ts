@@ -67,6 +67,33 @@ describe("progress backups", () => {
     expect(parseBackup(createBackup(state)).state.day).toBe(6);
   });
 
+  it("round-trips a compact backup larger than the old 1 MB limit without truncating history", () => {
+    const history = Array.from({ length: 18_000 }, (_, index) => ({
+      kind: "lesson" as const,
+      number: 1,
+      completedAt: index,
+      correct: 7,
+      total: 7,
+    }));
+    const state: AppState = {
+      ...createInitialState(),
+      lastActive: "Суббота — прогресс сохранён полностью 🚀",
+      steps: { "урок:готов": true },
+      resultHistory: history,
+    };
+
+    const backup = createBackup(state, new Date("2026-10-25T12:00:00.000Z"));
+    const bytes = new TextEncoder().encode(backup).byteLength;
+    const preview = parseBackup(backup);
+
+    expect(bytes).toBeGreaterThan(1_048_576);
+    expect(bytes).toBeLessThan(MAX_BACKUP_BYTES);
+    expect(backup).not.toContain("\n");
+    expect(preview.state.lastActive).toBe(state.lastActive);
+    expect(preview.state.steps).toEqual(state.steps);
+    expect(preview.state.resultHistory).toEqual(history);
+  });
+
   it("rejects corrupt progress instead of repairing it", () => {
     const backup = JSON.parse(createBackup(completeState())) as {
       state: Record<string, unknown>;
@@ -92,5 +119,8 @@ describe("progress backups", () => {
     expect(() => parseBackup(JSON.stringify(unsupported))).toThrow(/версия.*не поддерживается/i);
     expect(() => parseBackup("not json")).toThrow(/повреждён.*неверный формат/i);
     expect(() => parseBackup("x".repeat(MAX_BACKUP_BYTES + 1))).toThrow(/слишком большой/i);
+    expect(() =>
+      createBackup({ ...createInitialState(), lastActive: "x".repeat(MAX_BACKUP_BYTES) }),
+    ).toThrow(/слишком большой.*20 МБ/i);
   });
 });

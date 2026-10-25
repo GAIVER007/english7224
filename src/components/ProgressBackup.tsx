@@ -68,7 +68,7 @@ export function ProgressBackup() {
             setBusy(true);
             try {
               if (file.size > MAX_BACKUP_BYTES)
-                throw new Error("Файл слишком большой. Выбери копию SpeakUp размером до 1 МБ.");
+                throw new Error("Файл слишком большой. Выбери копию SpeakUp размером до 20 МБ.");
               setPending(parseBackup(await file.text()));
             } catch (failure) {
               setError(failure instanceof Error ? failure.message : "Не удалось прочитать копию.");

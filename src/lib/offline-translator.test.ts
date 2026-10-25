@@ -64,6 +64,7 @@ describe("offline model manifest", () => {
   const complete = [
     `${prefix}/config.json`,
     `${prefix}/tokenizer.json`,
+    `${prefix}/tokenizer_config.json`,
     `${prefix}/onnx/encoder_model_quantized.onnx`,
     `${prefix}/onnx/decoder_model_merged_quantized.onnx`,
   ];
@@ -83,6 +84,48 @@ describe("offline model manifest", () => {
     expect(
       isCompletePinnedModelManifest(
         complete.map((file) => file.replace(model.id, "someone/other-model")),
+        model,
+      ),
+    ).toBe(false);
+  });
+  it("rejects a manifest with the wrong ONNX graph, path, or duplicate file", () => {
+    expect(
+      isCompletePinnedModelManifest(
+        complete.map((file) =>
+          file.endsWith("decoder_model_merged_quantized.onnx")
+            ? file.replace("decoder_model_merged_quantized.onnx", "extra.onnx")
+            : file,
+        ),
+        model,
+      ),
+    ).toBe(false);
+    expect(isCompletePinnedModelManifest([...complete, complete[0]!], model)).toBe(false);
+    expect(
+      isCompletePinnedModelManifest(
+        complete.map((file) =>
+          file.endsWith("/config.json") ? file.replace("/config.json", "/onnx/config.json") : file,
+        ),
+        model,
+      ),
+    ).toBe(false);
+  });
+
+  it("requires both tokenizer and config files", () => {
+    expect(
+      isCompletePinnedModelManifest(
+        complete.filter((file) => !file.endsWith("/tokenizer.json")),
+        model,
+      ),
+    ).toBe(false);
+    expect(
+      isCompletePinnedModelManifest(
+        complete.filter((file) => !file.endsWith("/tokenizer_config.json")),
+        model,
+      ),
+    ).toBe(false);
+    expect(
+      isCompletePinnedModelManifest(
+        complete.filter((file) => !file.endsWith("/config.json")),
         model,
       ),
     ).toBe(false);

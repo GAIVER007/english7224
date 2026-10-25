@@ -1,6 +1,6 @@
 import { validateAppStateForImport, type AppState } from "./store";
 
-export const MAX_BACKUP_BYTES = 1_048_576;
+export const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 const BACKUP_KIND = "speakup-progress";
 const BACKUP_VERSION = 1;
 
@@ -22,7 +22,7 @@ function byteLength(value: string): number {
 
 function assertSize(value: string) {
   if (byteLength(value) > MAX_BACKUP_BYTES) {
-    throw new Error("Файл резервной копии слишком большой. Максимальный размер — 1 МБ.");
+    throw new Error("Файл резервной копии слишком большой. Максимальный размер — 20 МБ.");
   }
 }
 
@@ -38,7 +38,8 @@ export function createBackup(state: AppState, now: number | Date = Date.now()): 
     exportedAt,
     state: validateAppStateForImport(state),
   };
-  const backup = JSON.stringify(envelope, null, 2);
+  // Keep long learning histories intact while avoiding formatting overhead.
+  const backup = JSON.stringify(envelope);
   assertSize(backup);
   return backup;
 }

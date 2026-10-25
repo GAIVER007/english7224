@@ -66,7 +66,7 @@ export function OfflineModels({ onReady }: { onReady: (ready: boolean) => void }
       </h2>
       <p className="text-sm text-muted-foreground mt-2">
         {ready
-          ? "RU ↔ EN работает на этом устройстве. Текст никуда не отправляется, суточного лимита нет."
+          ? "RU ↔ EN готов на этом устройстве. Текст никуда не отправляется, суточного лимита нет."
           : "Один раз скачай две модели RU ↔ EN — несколько сотен МБ. После загрузки они переводят прямо на устройстве. Лучше использовать Wi-Fi."}
       </p>
       {!ready && (
@@ -98,7 +98,8 @@ export function OfflineModels({ onReady }: { onReady: (ready: boolean) => void }
       )}
       {ready && (
         <p className="text-xs text-muted-foreground mt-2">
-          Если браузер удалит данные сайта, пакеты потребуется скачать заново.
+          Пакеты сохранены в кэше браузера. Если браузер удалит данные сайта, их потребуется скачать
+          заново.
         </p>
       )}
     </section>

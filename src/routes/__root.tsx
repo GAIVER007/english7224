@@ -126,19 +126,32 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function CloudSync() {
+  const [syncConflict, setSyncConflict] = useState(false);
   useEffect(() => {
     let active = true;
-    void import("@/lib/cloud-sync").then(({ startSync, stopSync }) => {
+    let authRevision = 0;
+    void import("@/lib/cloud-sync").then(({ startSync, stopSync, onSyncStatus, getSyncStatus }) => {
       if (!active) return;
-      void supabase.auth.getUser().then(({ data }) => {
-        if (data.user) void startSync(data.user.id);
-      });
+      setSyncConflict(getSyncStatus() === "conflict");
+      const offStatus = onSyncStatus((status) => setSyncConflict(status === "conflict"));
+      const revision = authRevision;
+      void supabase.auth
+        .getUser()
+        .then(({ data }) => {
+          if (active && authRevision === revision && data.user) void startSync(data.user.id);
+        })
+        .catch(() => {});
       const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (!active) return;
+        authRevision += 1;
         if (event === "SIGNED_OUT") stopSync();
-        else if (session?.user && (event === "SIGNED_IN" || event === "INITIAL_SESSION"))
-          void startSync(session.user.id);
+        else if (session?.user) void startSync(session.user.id);
       });
-      cleanup = () => data.subscription.unsubscribe();
+      cleanup = () => {
+        data.subscription.unsubscribe();
+        offStatus();
+        stopSync();
+      };
     });
     let cleanup = () => {};
     return () => {
@@ -146,7 +159,14 @@ function CloudSync() {
       cleanup();
     };
   }, []);
-  return null;
+  return syncConflict ? (
+    <p role="status" className="mx-auto mt-3 max-w-md rounded-xl border bg-card p-4 text-sm">
+      Есть разные версии прогресса.{" "}
+      <Link to="/account" className="underline font-semibold">
+        Сравнить и объединить
+      </Link>
+    </p>
+  ) : null;
 }
 
 function RootComponent() {

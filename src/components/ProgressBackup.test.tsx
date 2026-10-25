@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ProgressBackup } from "./ProgressBackup";
-import { createBackup } from "@/lib/backup";
+import { createBackup, MAX_BACKUP_BYTES } from "@/lib/backup";
 import { createInitialState, restoreAppState } from "@/lib/store";
 
 vi.mock("@/lib/store", async (importOriginal) => {
@@ -41,6 +41,16 @@ it("rejects invalid files and allows cancellation without altering progress", as
   await screen.findByRole("region", { name: "Предпросмотр копии" });
   fireEvent.click(screen.getByRole("button", { name: "Отмена" }));
   expect(restoreAppState).not.toHaveBeenCalled();
+});
+it("rejects files larger than 20 MB before reading them", async () => {
+  const read = vi.fn(async () => "not read");
+  render(<ProgressBackup />);
+  fireEvent.change(screen.getByLabelText("Файл резервной копии"), {
+    target: { files: [{ size: MAX_BACKUP_BYTES + 1, text: read }] },
+  });
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("до 20 МБ");
+  expect(read).not.toHaveBeenCalled();
 });
 it("keeps the preview available if persistence fails and reports no success", async () => {
   vi.mocked(restoreAppState).mockImplementation(() => {
