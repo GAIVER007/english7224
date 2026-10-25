@@ -13,6 +13,8 @@ import { revisionUnits } from "@/lib/pathway/plan";
 import { emptyPath, emptyUnit, examBankVersion } from "@/lib/pathway/state";
 import {
   saveUnit,
+  startUnitReview,
+  dueUnits,
   submitUnit,
   productionReady,
   wordCount,
@@ -157,9 +159,7 @@ function Course() {
   const units = unitsForLevel(path.selected);
   const passed = units.filter((u) => path.units[u.id]?.passed).length;
   const next = units.find((u) => !path.units[u.id]?.passed);
-  const due = pathUnits.filter(
-    (u) => path.units[u.id]?.passed && path.units[u.id]!.due <= Date.now(),
-  );
+  const due = dueUnits(state);
   const dueWords = duePathVocabulary(state);
   const learnedWords = learnedPathVocabularyCount(state);
   const nextWordReview = nextPathVocabularyDue(state);
@@ -241,16 +241,10 @@ function Course() {
       </section>
       {due.length > 0 && (
         <Link
-          className="btn-secondary w-full mt-4"
+          className="btn-ghost w-full mt-4"
           to="/course"
           search={{ unit: due[0]!.id }}
-          onClick={() =>
-            update((s) =>
-              s.pathway?.units[due[0]!.id]?.submitted
-                ? saveUnit(s, due[0]!.id, { stage: 0, submitted: false, answers: {} })
-                : s,
-            )
-          }
+          onClick={() => update((s) => startUnitReview(s, due[0]!.id))}
         >
           Пора освежить · {due.length} тем
         </Link>
@@ -300,8 +294,8 @@ function Course() {
                 key={u.id}
                 to="/course"
                 search={{ unit: u.id }}
-                onClick={() => update((s) => saveUnit(s, u.id, { stage: 0 }))}
-                className="btn-secondary justify-start"
+                onClick={() => update((s) => startUnitReview(s, u.id))}
+                className="btn-ghost justify-start"
               >
                 {u.title}
                 <ArrowRight size={16} aria-hidden="true" />
@@ -416,7 +410,7 @@ function UnitSession({ unit }: { unit: PathUnit }) {
           </dl>
           {learnedWords < unit.vocabulary.length ? (
             <button
-              className="btn-secondary w-full"
+              className="btn-ghost w-full"
               type="button"
               onClick={() => update((s) => learnPathVocabulary(s, unit))}
             >
@@ -600,9 +594,14 @@ function UnitSession({ unit }: { unit: PathUnit }) {
               <p>
                 Лучший результат: {progress.best}/6. Попыток: {progress.attempts}.
               </p>
+              <p className="text-sm text-muted-foreground">
+                {currentScore >= 5
+                  ? `Следующее повторение: ${new Date(progress.due).toLocaleDateString("ru-RU")}.`
+                  : "Повтори трудные места сегодня. Прежний зачёт и XP сохраняются."}
+              </p>
               <button
-                className="btn-secondary w-full"
-                onClick={() => patch({ answers: {}, submitted: false, stage: 0 })}
+                className="btn-ghost w-full"
+                onClick={() => update((s) => startUnitReview(s, unit.id))}
               >
                 Повторить тему
               </button>
@@ -830,8 +829,8 @@ function LevelExam({ level }: { level: PathLevel }) {
                   key={id}
                   to="/course"
                   search={{ unit: id }}
-                  onClick={() => update((s) => saveUnit(s, id, { stage: 0 }))}
-                  className="btn-secondary w-full justify-start"
+                  onClick={() => update((s) => startUnitReview(s, id))}
+                  className="btn-ghost w-full justify-start"
                 >
                   {pathUnits.find((u) => u.id === id)?.title}
                 </Link>

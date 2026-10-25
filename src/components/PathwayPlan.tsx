@@ -9,7 +9,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { pathwayPlan, type PathwayPlanAction } from "@/lib/pathway/plan";
-import { saveUnit } from "@/lib/pathway/progress";
+import { startUnitReview } from "@/lib/pathway/progress";
 import { emptyPath } from "@/lib/pathway/state";
 import { useAppState, type AppState } from "@/lib/store";
 
@@ -53,9 +53,7 @@ export function PathwayPlan({ state }: { state: AppState }) {
   const progress = next.unitId ? state.pathway?.units[next.unitId] : undefined;
   const runAction = (action: PathwayPlanAction) => {
     if (action.kind === "remediation" || action.kind === "unit-review") {
-      update((current) =>
-        action.unitId ? saveUnit(current, action.unitId, { stage: 0 }) : current,
-      );
+      update((current) => (action.unitId ? startUnitReview(current, action.unitId) : current));
     } else if (action.selectLevel) {
       update((current) => ({
         ...current,

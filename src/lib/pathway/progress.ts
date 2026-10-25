@@ -2,7 +2,7 @@ import { awardXp } from "../xp-ledger";
 import { recordPractice } from "../motivation";
 import { touchStreak, type AppState } from "../store";
 import { emptyPath, emptyUnit, examBankVersion, type PathUnitProgress } from "./state";
-import { levelQuestions, unitsForLevel } from "./index";
+import { levelQuestions, unitsForLevel, pathUnits } from "./index";
 import type { PathLevel, PathUnit } from "./types";
 export function wordCount(text: string) {
   return text.trim().split(/\s+/).filter(Boolean).length;
@@ -24,6 +24,39 @@ export function saveUnit(state: AppState, id: string, patch: Partial<PathUnitPro
     },
   };
 }
+const UNIT_INTERVAL_DAYS = [1, 3, 7, 14, 30] as const;
+
+/** Only a submitted attempt is reset; re-entering a draft must never erase it. */
+export function startUnitReview(state: AppState, id: string): AppState {
+  if (!state.pathway?.units[id]?.submitted) return state;
+  return saveUnit(state, id, { stage: 0, submitted: false, answers: {} });
+}
+
+export function dueUnits(state: AppState, now = Date.now()): PathUnit[] {
+  return pathUnits
+    .filter((unit) => {
+      const progress = state.pathway?.units[unit.id];
+      return progress?.passed && progress.due <= now;
+    })
+    .sort((a, b) => state.pathway!.units[a.id]!.due - state.pathway!.units[b.id]!.due);
+}
+
+function nextUnitReview(state: AppState, id: string, passed: boolean, now: number) {
+  const progress = state.pathway?.units[id] ?? emptyUnit();
+  if (!passed) return { reviewBox: 0, due: now };
+  // Legacy successful attempts used a seven-day interval; keep their due date.
+  const box = progress.reviewBox ?? (progress.passed ? 2 : 0);
+  if (progress.passed && progress.due > now) return { reviewBox: box, due: progress.due };
+  const latest = state.pathway?.history
+    .filter((result) => result.id === id)
+    .reduce<NonNullable<AppState["pathway"]>["history"][number] | undefined>(
+      (best, result) => (!best || result.at >= best.at ? result : best),
+      undefined,
+    );
+  const nextBox = !progress.passed || latest?.passed === false ? 0 : Math.min(4, box + 1);
+  return { reviewBox: nextBox, due: now + UNIT_INTERVAL_DAYS[nextBox]! * 86400000 };
+}
+
 export function submitUnit(state: AppState, unit: PathUnit, now = Date.now()): AppState {
   const path = state.pathway ?? emptyPath();
   const progress = path.units[unit.id] ?? emptyUnit();
@@ -41,7 +74,7 @@ export function submitUnit(state: AppState, unit: PathUnit, now = Date.now()): A
     passed: progress.passed || passed,
     best: Math.max(progress.best, correct),
     attempts: progress.attempts + 1,
-    due: passed ? now + 7 * 86400000 : now,
+    ...nextUnitReview(state, unit.id, passed, now),
   });
   next.pathway = {
     ...next.pathway!,

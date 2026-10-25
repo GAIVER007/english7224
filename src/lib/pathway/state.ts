@@ -34,6 +34,7 @@ export const pathUnitProgressSchema = z
     best: count.max(6),
     attempts: count,
     due: count,
+    reviewBox: count.max(4).optional(),
   })
   .refine((u) => !u.passed || u.best >= 5, {
     message: "Passed unit requires a passing best score",

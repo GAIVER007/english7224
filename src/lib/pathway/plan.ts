@@ -1,5 +1,5 @@
 import type { AppState } from "../store";
-import { canTakeLevel } from "./progress";
+import { canTakeLevel, dueUnits } from "./progress";
 import { PATH_LEVELS, unitsForLevel } from "./index";
 import { emptyPath } from "./state";
 import type { PathLevel, PathUnit } from "./types";
@@ -118,20 +118,15 @@ export function pathwayPlan(state: AppState, now = Date.now()): PathwayPlanActio
     });
   }
 
-  const dueUnit = unitsForLevel(path.selected)
-    .filter(
-      (unit) =>
-        path.units[unit.id]?.passed &&
-        path.units[unit.id]!.due <= now &&
-        !remediation.some((item) => item.id === unit.id),
-    )
-    .sort((left, right) => path.units[left.id]!.due - path.units[right.id]!.due)[0];
+  const dueUnit = dueUnits(state, now).find(
+    (unit) => !remediation.some((item) => item.id === unit.id),
+  );
   if (dueUnit) {
     actions.push({
       id: `unit-review:${dueUnit.id}`,
       kind: "unit-review",
-      title: `Освежить: ${dueUnit.title}`,
-      reason: "Прошла неделя после зачёта. Быстро повтори материал, чтобы он не стёрся.",
+      title: `Освежить ${dueUnit.level}: ${dueUnit.title}`,
+      reason: "Подошёл срок повторения. Вернись к теме и проверь, что осталось в памяти.",
       label: "Повторить тему",
       search: { unit: dueUnit.id },
       unitId: dueUnit.id,

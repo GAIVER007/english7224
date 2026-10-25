@@ -14,8 +14,25 @@ vi.mock("@tanstack/react-router", () => ({
     options,
     useSearch: () => routeSearch.value,
   }),
-  Link: ({ children, to, className }: { children: ReactNode; to: string; className?: string }) => (
-    <a href={to} className={className}>
+  Link: ({
+    children,
+    to,
+    className,
+    onClick,
+  }: {
+    children: ReactNode;
+    to: string;
+    className?: string;
+    onClick?: () => void;
+  }) => (
+    <a
+      href={to}
+      className={className}
+      onClick={(event) => {
+        event.preventDefault();
+        onClick?.();
+      }}
+    >
       {children}
     </a>
   ),
@@ -288,5 +305,27 @@ describe("course unit session", () => {
       speakingSeconds: 18,
       speakingNotes: "Finish sentences without switching to Russian.",
     });
+  });
+});
+
+it("starts a scheduled review from the course without retaining submitted answers", () => {
+  seedUnit({
+    submitted: true,
+    passed: true,
+    best: 6,
+    due: 1,
+    answers: { "0": "old" },
+    writing: "Keep my text",
+  });
+  routeSearch.value = {};
+  render(<Course />);
+  fireEvent.click(screen.getByRole("link", { name: /Пора освежить/ }));
+  const saved = JSON.parse(localStorage.getItem("speakup-state-v1")!);
+  expect(saved.pathway.units[unit.id]).toMatchObject({
+    submitted: false,
+    passed: true,
+    answers: {},
+    writing: "Keep my text",
+    stage: 0,
   });
 });
