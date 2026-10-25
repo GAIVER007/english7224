@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const defaultPublicDir = path.join(projectRoot, ".output", "public");
 
-const shellRoutes = ["/", "/translate", "/lesson", "/progress", "/placement", "/weekly"];
+const shellRoutes = ["/", "/translate", "/lesson", "/progress", "/placement", "/weekly", "/course"];
 const shellFiles = new Set([
   "/favicon.ico",
   "/manifest.webmanifest",

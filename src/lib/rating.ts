@@ -37,6 +37,18 @@ export function personalRating(state: AppState) {
     (module) => state.examResults?.[moduleExamKey(module.id)]?.passed,
   ).length;
   const parts = [
+    {
+      label: "Темы A0–C1",
+      count: Object.values(state.pathway?.units ?? {}).filter((u) => u.passed).length,
+      limit: 72,
+      unit: 20,
+    },
+    {
+      label: "Контрольные A0–C1",
+      count: Object.values(state.pathway?.exams ?? {}).filter((e) => e.passed).length,
+      limit: 6,
+      unit: 50,
+    },
     { label: "Пройденные миссии", count: missions, limit: lessons.length, unit: 20 },
     { label: "Сданные модули", count: modules, limit: courseModules.length, unit: 50 },
     { label: "Дни практики", count: Math.min(records.activeDays, 100), limit: 100, unit: 10 },

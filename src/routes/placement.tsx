@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { TrainingHeader, Brand } from "@/components/TrainingUI";
 import { ArrowRight, Sprout } from "lucide-react";
 import { useState } from "react";
-import { lessons, levels, placementQuestions, type Level } from "@/lib/content";
+import { levels, placementQuestions, type Level } from "@/lib/content";
 import { levelFromScore } from "@/lib/learning";
 import { useAppState } from "@/lib/store";
 
@@ -15,9 +15,10 @@ export const Route = createFileRoute("/placement")({
       { title: "Тест уровня — SpeakUp" },
       {
         name: "description",
-        content: "Определите свой уровень английского от A1 до C1 за пару минут.",
+        content:
+          "Найдите ориентир для старта в английском: короткая проверка и самостоятельный выбор.",
       },
-      { property: "og:title", content: "Тест уровня английского — SpeakUp" },
+      { property: "og:title", content: "Ориентир для старта — SpeakUp" },
       { property: "og:description", content: "Короткий placement test от A1 до C1." },
     ],
   }),
@@ -33,7 +34,14 @@ function Placement() {
   const [result, setResult] = useState<Level | null>(null);
 
   const finish = (lvl: Level) => {
-    update((s) => ({ ...s, level: lvl }));
+    update((s) => ({
+      ...s,
+      level: lvl,
+      pathway: {
+        ...(s.pathway ?? { selected: lvl, units: {}, exams: {}, history: [] }),
+        selected: lvl,
+      },
+    }));
     nav({ to: "/" });
   };
 
@@ -50,10 +58,26 @@ function Placement() {
         <TrainingHeader title="Твоя точка старта" detail="Её всегда можно изменить" />
         <h1 className="text-4xl font-semibold">Выбери свой уровень</h1>
         <p className="mt-4 text-muted-foreground">
-          Как ты чувствуешь себя в английском? Это ориентир для тебя. В курсе — {lessons.length}{" "}
-          разговорных ситуаций уровня A2.
+          Как ты чувствуешь себя в английском? Это ориентир, а этап программы A0–C1 можно выбрать
+          отдельно.
         </p>
         <div className="mt-8 grid gap-3">
+          <button
+            className="option"
+            onClick={() => {
+              update((s) => ({
+                ...s,
+                level: "A1",
+                pathway: {
+                  ...(s.pathway ?? { selected: "A0", units: {}, exams: {}, history: [] }),
+                  selected: "A0",
+                },
+              }));
+              nav({ to: "/course", search: {} });
+            }}
+          >
+            A0 · Начинаю с нуля
+          </button>
           {levels.map((l) => (
             <button key={l} className="option" onClick={() => finish(l)}>
               <span className="inline-flex min-w-12 text-primary">{l}</span>
@@ -83,7 +107,8 @@ function Placement() {
         </div>
         <p className="eyebrow">Твоя точка старта</p>
         <p className="mt-3 text-sm text-muted-foreground">
-          Это короткий ориентировочный тест, не полноценная оценка CEFR. Доступный курс — A2.
+          Это короткий ориентировочный тест, не полноценная оценка CEFR. В программе можно выбрать
+          любой этап от A0 до C1.
         </p>
         <h1 className="mt-2 text-8xl font-semibold text-primary">{result}</h1>
         <button className="btn-primary mt-10" onClick={() => finish(result)}>

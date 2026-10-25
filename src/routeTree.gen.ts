@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CourseRouteImport } from './routes/course'
 import { Route as LessonRouteImport } from './routes/lesson'
 import { Route as PlacementRouteImport } from './routes/placement'
 import { Route as ProgressRouteImport } from './routes/progress'
@@ -19,6 +20,11 @@ import { Route as WeeklyRouteImport } from './routes/weekly'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CourseRoute = CourseRouteImport.update({
+  id: '/course',
+  path: '/course',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LessonRoute = LessonRouteImport.update({
@@ -49,6 +55,7 @@ const WeeklyRoute = WeeklyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/course': typeof CourseRoute
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/course': typeof CourseRoute
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/course': typeof CourseRoute
   '/lesson': typeof LessonRoute
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
@@ -75,12 +84,26 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/lesson' | '/placement' | '/progress' | '/translate' | '/weekly'
+    | '/'
+    | '/course'
+    | '/lesson'
+    | '/placement'
+    | '/progress'
+    | '/translate'
+    | '/weekly'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lesson' | '/placement' | '/progress' | '/translate' | '/weekly'
+  to:
+    | '/'
+    | '/course'
+    | '/lesson'
+    | '/placement'
+    | '/progress'
+    | '/translate'
+    | '/weekly'
   id:
     | '__root__'
     | '/'
+    | '/course'
     | '/lesson'
     | '/placement'
     | '/progress'
@@ -90,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CourseRoute: typeof CourseRoute
   LessonRoute: typeof LessonRoute
   PlacementRoute: typeof PlacementRoute
   ProgressRoute: typeof ProgressRoute
@@ -104,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/course': {
+      id: '/course'
+      path: '/course'
+      fullPath: '/course'
+      preLoaderRoute: typeof CourseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lesson': {
@@ -146,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CourseRoute: CourseRoute,
   LessonRoute: LessonRoute,
   PlacementRoute: PlacementRoute,
   ProgressRoute: ProgressRoute,

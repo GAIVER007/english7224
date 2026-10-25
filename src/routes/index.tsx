@@ -10,6 +10,7 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
+import { emptyPath } from "@/lib/pathway/state";
 import { CoursePath } from "@/components/CoursePath";
 import { lessons } from "@/lib/content";
 import { StudyPlan } from "@/components/StudyPlan";
@@ -67,8 +68,8 @@ function Home() {
         <div className="coach-note">
           <Sparkles size={20} aria-hidden="true" />
           <p>
-            Начнём с {lessons.length} жизненных ситуаций: от уверенной практики A2 к задачам B1. Без
-            регистрации, в твоём темпе.
+            Программа от первых слов до сложных тем A0–C1 и {lessons.length} разговорных ситуаций.
+            Без регистрации, в твоём темпе.
           </p>
         </div>
       </main>
@@ -95,7 +96,16 @@ function Home() {
         <h1>Сегодня</h1>
         <p>Ещё один шаг к свободному английскому.</p>
       </div>
-      <StudyPlan state={state} />
+      <Link to="/course" search={{}} className="path-home-card">
+        <span className="eyebrow">Твоя программа · A0–C1</span>
+        <h2>Продолжить обучение</h2>
+        <p>
+          Текущий этап: {(state.pathway ?? emptyPath()).selected} · чтение, речь, письмо и практика
+        </p>
+        <span className="path-home-cta">
+          Открыть программу <ArrowRight size={18} aria-hidden="true" />
+        </span>
+      </Link>
       <WeeklyRhythm state={state} />
       <section id="practice" className="scroll-mt-6">
         <SectionHeading title="Практика" aside={<span>Выбери навык</span>} />
@@ -168,8 +178,10 @@ function Home() {
       </section>
       <details className="course-disclosure">
         <summary>
-          Курс · {Math.min(state.day - 1, lessons.length)} из {lessons.length} миссий
+          Разговорные ситуации · {Math.min(state.day - 1, lessons.length)} из {lessons.length}{" "}
+          миссий
         </summary>
+        <StudyPlan state={state} />
         <CoursePath state={state} />
       </details>
       <BottomNav />

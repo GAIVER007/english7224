@@ -5,6 +5,8 @@ import { lessons, type Level } from "./content";
 import { courseModules } from "./curriculum";
 import { BADGE_IDS, earnedBadgeIdsForState, type BadgeId } from "./motivation";
 
+import { pathStateSchema, emptyPath, type PathState } from "./pathway/state";
+
 export interface CardState {
   box: number;
   due: number;
@@ -52,6 +54,7 @@ export interface AppState {
   examResults?: Record<string, ExamResult>;
   grammarHistory?: boolean[];
   grammarCards?: Record<string, CardState>;
+  pathway?: PathState;
   resultHistory?: ResultRecord[];
 }
 
@@ -74,6 +77,7 @@ export function createInitialState(): AppState {
     examResults: {},
     grammarHistory: [],
     grammarCards: {},
+    pathway: emptyPath(),
     resultHistory: [],
   };
 }
@@ -158,6 +162,7 @@ const fieldSchemas = {
   examResults: examResultsSchema,
   grammarHistory: z.array(z.boolean()).max(100),
   grammarCards: z.record(cardSchema),
+  pathway: pathStateSchema,
   resultHistory: z.array(
     z
       .object({
@@ -191,6 +196,7 @@ const migratedDefaultFields = new Set([
   "examResults",
   "grammarHistory",
   "grammarCards",
+  "pathway",
   "resultHistory",
 ]);
 

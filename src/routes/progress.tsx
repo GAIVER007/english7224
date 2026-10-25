@@ -273,7 +273,8 @@ function Progress() {
       <details className="card-soft mt-6 p-5">
         <summary className="min-h-11 cursor-pointer font-bold text-sm">Мои настройки</summary>
         <p className="subcopy mt-3">
-          Ориентир: {state.level ?? "не выбран"}. Текущий маршрут — практика от A2 к задачам B1.
+          Ориентир: {state.level ?? "не выбран"}. Выбранный этап программы:{" "}
+          {state.pathway?.selected ?? "A0"}. Это настройки сложности, не подтверждённый уровень.
         </p>
         <Link to="/placement" search={{ choose: true }} className="btn-ghost mt-3 w-full">
           Изменить уровень
