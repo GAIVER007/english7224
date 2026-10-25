@@ -1,3 +1,4 @@
+import { awardXp } from "./xp-ledger";
 import { lessons, placementQuestions, levels, type Level, type Word } from "./content";
 import { lessonExamKey, moduleAvailable, moduleExamKey, pendingModule } from "./curriculum";
 import { recordPractice } from "./motivation";
@@ -46,8 +47,7 @@ export function completeStep(state: AppState, day: number, step: Step): AppState
     return state;
   return recordPractice(
     touchStreak({
-      ...state,
-      xp: state.xp + 10,
+      ...awardXp(state, `step:${key}`),
       steps: { ...state.steps, [key]: true },
       day: step === "test" ? day + 1 : day,
     }),
@@ -117,8 +117,7 @@ export function finishModuleExam(state: AppState, moduleId: number, score: ExamS
   if (previous?.passed && !passed) return { ...state, resultHistory };
 
   const next: AppState = {
-    ...state,
-    xp: state.xp + (passed && !previous?.passed ? 30 : 0),
+    ...(passed && !previous?.passed ? awardXp(state, key) : state),
     resultHistory,
     examResults: {
       ...(state.examResults ?? {}),

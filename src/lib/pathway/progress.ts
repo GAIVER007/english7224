@@ -1,3 +1,4 @@
+import { awardXp } from "../xp-ledger";
 import { recordPractice } from "../motivation";
 import { touchStreak, type AppState } from "../store";
 import { emptyPath, emptyUnit, examBankVersion, type PathUnitProgress } from "./state";
@@ -34,7 +35,8 @@ export function submitUnit(state: AppState, unit: PathUnit, now = Date.now()): A
     return state;
   const correct = unit.questions.filter((q, i) => q.answer === progress.answers[String(i)]).length;
   const passed = correct / unit.questions.length >= 0.8;
-  const next = saveUnit(state, unit.id, {
+  const rewarded = passed && !progress.passed ? awardXp(state, `unit:${unit.id}`) : state;
+  const next = saveUnit(rewarded, unit.id, {
     submitted: true,
     passed: progress.passed || passed,
     best: Math.max(progress.best, correct),
@@ -48,7 +50,6 @@ export function submitUnit(state: AppState, unit: PathUnit, now = Date.now()): A
       { id: unit.id, at: now, correct, total: unit.questions.length, passed },
     ],
   };
-  next.xp += passed && !progress.passed ? 10 : 0;
   let practiced = recordPractice(touchStreak(next, now), now, "language");
   practiced = recordPractice(practiced, now, "input");
   return recordPractice(practiced, now, "output");
@@ -75,8 +76,7 @@ export function submitLevel(state: AppState, level: PathLevel, now = Date.now())
   return recordPractice(
     touchStreak(
       {
-        ...state,
-        xp: state.xp + (passed && !exam.passed ? 50 : 0),
+        ...(passed && !exam.passed ? awardXp(state, `exam:${level}`) : state),
         pathway: {
           ...path,
           exams: {

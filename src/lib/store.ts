@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { z } from "zod";
+import { xpLedgerSchema, ledgerTotal, type XpLedger } from "./xp-ledger";
 import { PRACTICE_SKILLS, type PracticeSkill } from "./practice-balance";
 import { lessons, type Level } from "./content";
 import { courseModules } from "./curriculum";
@@ -41,6 +42,7 @@ export interface AppState {
   level: Level | null;
   day: number;
   xp: number;
+  xpLedger?: XpLedger;
   streak: number;
   lastActive: string | null;
   steps: Record<string, boolean>; // `${day}:${step}`
@@ -187,7 +189,7 @@ const fieldSchemas = {
     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     z.array(z.enum(PRACTICE_SKILLS)).max(4),
   ),
-} satisfies Record<keyof Omit<AppState, "weeklyResult">, z.ZodTypeAny>;
+} satisfies Record<keyof Omit<AppState, "weeklyResult" | "xpLedger">, z.ZodTypeAny>;
 const migratedDefaultFields = new Set([
   "dailyGoal",
   "practiceSkills",
@@ -251,6 +253,19 @@ function normalizeState(value: unknown): { state: AppState; repaired: boolean } 
       repaired = true;
     }
   }
+  if (source["xpLedger"] !== undefined) {
+    const ledger = xpLedgerSchema.safeParse(source["xpLedger"]);
+    if (
+      ledger.success &&
+      Number.isSafeInteger(ledgerTotal(ledger.data)) &&
+      ledgerTotal(ledger.data) === normalized["xp"]
+    ) {
+      normalized["xpLedger"] = ledger.data;
+    } else {
+      delete normalized["xpLedger"];
+      repaired = true;
+    }
+  }
   const state = normalized as unknown as AppState;
   state.earnedBadgeIds = earnedBadgeIdsForState(state);
   return { state, repaired };
@@ -292,6 +307,19 @@ export function validateAppStateForImport(value: unknown): AppState {
     delete validated["weeklyResult"];
   }
 
+  if (source["xpLedger"] !== undefined) {
+    const ledger = xpLedgerSchema.safeParse(source["xpLedger"]);
+    if (
+      !ledger.success ||
+      !Number.isSafeInteger(ledgerTotal(ledger.data)) ||
+      ledgerTotal(ledger.data) !== validated["xp"]
+    ) {
+      throw new Error("Журнал XP не соответствует сохранённому рейтингу.");
+    }
+    validated["xpLedger"] = ledger.data;
+  } else {
+    delete validated["xpLedger"];
+  }
   const state = validated as unknown as AppState;
   state.earnedBadgeIds = earnedBadgeIdsForState(state);
   return state;

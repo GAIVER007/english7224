@@ -1,3 +1,4 @@
+import { awardXp } from "../xp-ledger";
 import type { RecallWord } from "@/components/RecallPractice";
 import { recordPractice } from "../motivation";
 import { review, touchStreak, type AppState, type CardState } from "../store";
@@ -119,8 +120,7 @@ export function reviewPathVocabulary(
     [id]: review(current, correct, now),
   };
   const next = {
-    ...state,
-    xp: state.xp + (correct && current.correct === 0 ? 1 : 0),
+    ...(correct && current.correct === 0 ? awardXp(state, `word:${id}`) : state),
     pathway: { ...path, vocabulary },
   };
   return recordPractice(touchStreak(next, now), now, "language");

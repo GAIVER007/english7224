@@ -1,3 +1,4 @@
+import { mergeXp } from "./xp-ledger";
 import type { AppState } from "./store";
 import type { PathState } from "./pathway/state";
 
@@ -180,7 +181,7 @@ export function mergeAppStates(
 
   const shared = {
     day: Math.max(local.day, cloud.day),
-    xp: Math.max(local.xp, cloud.xp),
+    ...mergeXp(local, cloud),
     steps: booleanRecord(local.steps, cloud.steps),
     weakAreas: maxRecord(local.weakAreas, cloud.weakAreas),
     practiceSkills: unionRecord(local.practiceSkills, cloud.practiceSkills),
