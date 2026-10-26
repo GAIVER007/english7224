@@ -92,8 +92,14 @@ export function dailyProgress(state: AppState, now: number | Date = Date.now()):
 export function weeklyActivity(state: AppState, now: number | Date = Date.now()): ActivityDay[] {
   const today = asDate(now);
   const todayKey = localDateKey(today);
+  // Week runs Monday → Sunday.
+  const sinceMonday = (today.getDay() + 6) % 7;
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (6 - index));
+    const date = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() - sinceMonday + index,
+    );
     const key = localDateKey(date);
     return {
       date: key,

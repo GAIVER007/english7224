@@ -72,6 +72,12 @@ describe("weekly activity", () => {
     expect(days.filter((day) => day.isToday).map((day) => day.date)).toEqual(["2024-03-10"]);
     expect(days.every((day) => day.label.length > 0)).toBe(true);
   });
+
+  it("starts the week on Monday even mid-week", () => {
+    const days = weeklyActivity({ activity: {} } as never, new Date(2024, 2, 6, 12));
+    expect(days[0]!.date).toBe("2024-03-04");
+    expect(days[6]!.date).toBe("2024-03-10");
+  });
 });
 
 describe("motivation rewards", () => {

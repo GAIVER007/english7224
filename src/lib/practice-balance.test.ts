@@ -14,10 +14,12 @@ it("counts repeated practice once per skill and keeps the old state intact", () 
   expect(original.practiceSkills).toEqual({});
   expect(twice.xp).toBe(0);
 });
-it("excludes old practice from the rolling week and handles midnight", () => {
-  const state = recordPractice(createInitialState(), new Date(2026, 9, 17, 23, 59), "input");
-  expect(practiceBalance(state, new Date(2026, 9, 23)).skills).toEqual(["input"]);
-  expect(practiceBalance(state, new Date(2026, 9, 24)).skills).toEqual([]);
+it("counts practice within the Monday–Sunday week only", () => {
+  const sunday = recordPractice(createInitialState(), new Date(2026, 9, 18, 23, 59), "input");
+  expect(practiceBalance(sunday, new Date(2026, 9, 19)).skills).toEqual([]);
+  const monday = recordPractice(createInitialState(), new Date(2026, 9, 19, 0, 1), "input");
+  expect(practiceBalance(monday, new Date(2026, 9, 25, 23)).skills).toEqual(["input"]);
+  expect(practiceBalance(monday, new Date(2026, 9, 26)).skills).toEqual([]);
 });
 it("imports old backups without inventing past skills and rejects invalid skills", () => {
   const state = createInitialState();
