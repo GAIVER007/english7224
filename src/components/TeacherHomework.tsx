@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BookOpen, FilePlus2 } from "lucide-react";
 import { useAppState } from "@/lib/store";
 import {
   assignmentMaterial,
   assignmentTextLimit,
   assignmentTitleLimit,
+  tutorContinuation,
   type AssignmentMaterial,
 } from "@/lib/tutor";
 import { homeworkFileLimitMb, readHomeworkFile } from "@/lib/read-homework";
@@ -107,9 +108,11 @@ function HomeworkDraft({
 export function TeacherHomework({
   selectedId,
   onSelect,
+  recentId,
   disabled,
 }: {
   selectedId: string;
+  recentId: string | undefined;
   onSelect: (id: string) => void;
   disabled: boolean;
 }) {
@@ -119,6 +122,12 @@ export function TeacherHomework({
     ([, a], [, b]) => b.createdAt - a.createdAt,
   );
   const selected = state.teacherAssignments?.[selectedId];
+
+  const recent = recentId && state.teacherAssignments?.[recentId];
+  const continuation = useMemo(
+    () => (selectedId ? tutorContinuation(state.tutorLessons, selectedId) : undefined),
+    [state.tutorLessons, selectedId],
+  );
 
   function save(material: AssignmentMaterial) {
     const id = crypto.randomUUID();
@@ -150,8 +159,23 @@ export function TeacherHomework({
           </select>
         </label>
       )}
+      {!selectedId && !adding && recentId && recent && (
+        <button type="button" className="btn-ghost" onClick={() => onSelect(recentId)}>
+          Вернуться к заданию «{recent.title}»
+        </button>
+      )}
       {selected && (
         <div className="space-y-3">
+          {continuation?.last && (
+            <div className="space-y-1 border-l-2 border-primary pl-3">
+              <h3 className="font-semibold">
+                {continuation.checkpoint ? "С чего продолжить" : "Последний разбор"}
+              </h3>
+              <p className="whitespace-pre-wrap break-words">
+                {continuation.checkpoint ?? continuation.last.summary}
+              </p>
+            </div>
+          )}
           <details key={selectedId} className="rounded-xl bg-muted p-3">
             <summary className="cursor-pointer">
               <BookOpen aria-hidden="true" size={16} className="mr-2 inline" />

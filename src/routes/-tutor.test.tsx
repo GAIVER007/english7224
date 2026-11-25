@@ -31,7 +31,9 @@ vi.mock("@/lib/tutor-call", () => ({
         ended: (msg: string) => void;
       },
     ) {}
+    assignment?: { title: string; text: string } | undefined;
     start(token: string, previous: string, assignment?: { title: string; text: string }) {
+      this.assignment = assignment;
       fixture.start(token, previous, assignment);
       this.callbacks.phase("active");
       this.callbacks.caption("Mira: Hi, Yuri!");
@@ -48,6 +50,7 @@ vi.mock("@/lib/tutor-call", () => ({
         summary: "Разобрали дорогу к отелю.",
         homework: "Спросить дорогу.",
         homeworkDone: false,
+        ...(this.assignment && { resumeFrom: "Потренировать “" + this.assignment.text + "”" }),
       });
       this.callbacks.ended("");
     }
@@ -130,6 +133,7 @@ it("saves teacher homework separately and resumes only the selected exercise", a
   });
   fireEvent.click(screen.getByRole("button", { name: "Завершить звонок" }));
   expect(getAppState().teacherAssignments![id!]!.done).toBe(false);
+  expect(screen.getByText("Потренировать “Ask for a room.”")).toBeVisible();
   expect(screen.getByRole("heading", { name: "Lesson 3" })).toBeVisible();
   fireEvent.click(screen.getByRole("checkbox", { name: "Задание выполнено" }));
   await add("Lesson 4", "Order a coffee.");
@@ -141,12 +145,15 @@ it("saves teacher homework separately and resumes only the selected exercise", a
   fireEvent.click(screen.getByRole("button", { name: "Завершить звонок" }));
   cleanup();
   render(<Page />);
+  expect(screen.queryByRole("button", { name: "Вернуться к заданию «Lesson 3»" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Вернуться к заданию «Lesson 4»" }));
+  expect(screen.getByText("Потренировать “Order a coffee.”")).toBeVisible();
   fireEvent.change(screen.getByLabelText("Материал занятия"), { target: { value: id } });
   expect(screen.getByRole("checkbox", { name: "Задание выполнено" })).toBeChecked();
   fireEvent.click(screen.getByRole("button", { name: "Разобрать с Mira" }));
   expect(fixture.start).toHaveBeenLastCalledWith(
     "fixture",
     expect.stringContaining("дорогу к отелю"),
-    { title: "Lesson 3", text: "Ask for a room." },
+    { title: "Lesson 3", text: "Ask for a room.", resumeFrom: "Потренировать “Ask for a room.”" },
   );
 });

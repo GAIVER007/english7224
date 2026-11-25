@@ -1,7 +1,8 @@
 import {
   relayEvent,
   tutorPath,
-  type AssignmentMaterial,
+  missingTutorNotes,
+  type CallAssignment,
   type TutorSettings,
   type TutorLesson,
 } from "./tutor";
@@ -28,7 +29,7 @@ export class TutorCall {
   private caption = "";
   private speaker = "";
   private usage = 0;
-  private notes = { summary: "", homework: "" };
+  private notes?: Pick<TutorLesson, "summary" | "homework" | "resumeFrom">;
   private pulse?: ReturnType<typeof setInterval>;
   private deadline?: ReturnType<typeof setTimeout>;
   constructor(
@@ -37,7 +38,7 @@ export class TutorCall {
     private callbacks: CallCallbacks,
   ) {}
 
-  async start(token: string, previous: string, assignment?: AssignmentMaterial) {
+  async start(token: string, previous: string, assignment?: CallAssignment) {
     this.timeout(45000, "Не удалось установить связь с Mira.");
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === "undefined")
@@ -134,7 +135,11 @@ export class TutorCall {
         this.usage = Math.round(event.seconds);
         break;
       case "notes":
-        this.notes = { summary: event.summary, homework: event.homework };
+        this.notes = {
+          summary: event.summary,
+          homework: event.homework,
+          ...(event.resumeFrom !== undefined && { resumeFrom: event.resumeFrom }),
+        };
         break;
       case "error":
         this.close(event.message);
@@ -223,10 +228,11 @@ export class TutorCall {
         ...this.settings,
         startedAt: this.startedAt,
         seconds: this.usage || this.seconds || Math.round((Date.now() - this.startedAt) / 1000),
-        summary:
-          this.notes.summary ||
-          (this.caption ? this.caption.slice(-1200) : "Звонок завершён без конспекта."),
-        homework: this.notes.homework,
+        ...(this.notes ?? {
+          summary: this.caption.slice(-1200) || missingTutorNotes,
+          homework: "",
+          partial: true,
+        }),
         homeworkDone: false,
       });
     this.callbacks.ended(message);

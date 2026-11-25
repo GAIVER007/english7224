@@ -29,6 +29,10 @@ function TutorPage() {
       Object.entries(state.tutorLessons ?? {}).sort(([, a], [, b]) => b.startedAt - a.startedAt),
     [state.tutorLessons],
   );
+  const recentId = history.find(([, lesson]) => {
+    const assignment = lesson.assignmentId && state.teacherAssignments?.[lesson.assignmentId];
+    return assignment && !assignment.done && !lesson.partial;
+  })?.[1].assignmentId;
   return (
     <main className="app-shell space-y-6">
       <Link to="/" className="inline-flex items-center gap-2">
@@ -47,7 +51,12 @@ function TutorPage() {
             <h1 className="text-3xl font-bold">Разговор с Mira</h1>
           </div>
         </div>
-        <TeacherHomework selectedId={assignmentId} onSelect={chooseAssignment} disabled={busy} />
+        <TeacherHomework
+          selectedId={assignmentId}
+          recentId={recentId}
+          onSelect={chooseAssignment}
+          disabled={busy}
+        />
         <fieldset disabled={busy} className="flex flex-wrap gap-4">
           {!assignmentId && (
             <label>

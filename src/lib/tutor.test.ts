@@ -3,7 +3,13 @@ import { createBackup, parseBackup } from "./backup";
 import { createInitialState, validateAppStateForImport } from "./store";
 import { mergeAppStates } from "./sync-merge";
 import { TutorCall } from "./tutor-call";
-import { assignmentTextLimit, validateTutorSearch, type TutorLesson } from "./tutor";
+import {
+  assignmentTextLimit,
+  missingTutorNotes,
+  tutorContinuation,
+  validateTutorSearch,
+  type TutorLesson,
+} from "./tutor";
 
 const first = "04baca84-36e7-438f-9af2-1278734d8bca";
 const second = "d471df79-9f87-42be-adb4-9417fe2e07ed";
@@ -75,6 +81,50 @@ describe("tutor progress", () => {
     const tutor = { topic: "Работа", level: "A2", assignmentId: first };
     expect(validateTutorSearch({ tutor: { ...tutor, text: "private exercise" } })).toEqual({
       tutor,
+    });
+  });
+  it("recovers the saved exercise after interrupted calls, backups and unrelated lessons", () => {
+    const saved = {
+      ...lesson,
+      assignmentId: first,
+      resumeFrom: "Упражнение 3, вопрос про вокзал.",
+    };
+    const lessons = {
+      [first]: saved,
+      [second]: { ...lesson, assignmentId: second, startedAt: 90, resumeFrom: "Другая тема." },
+      [crypto.randomUUID()]: {
+        ...lesson,
+        assignmentId: first,
+        startedAt: 100,
+        partial: true as const,
+        summary: "Hello!",
+        homework: "",
+      },
+      [crypto.randomUUID()]: {
+        ...lesson,
+        assignmentId: first,
+        startedAt: 110,
+        summary: missingTutorNotes,
+        homework: "",
+      },
+      [crypto.randomUUID()]: {
+        ...lesson,
+        assignmentId: first,
+        startedAt: 120,
+        summary: "Mira: Hi!",
+        homework: "",
+      },
+    };
+    const backup = parseBackup(createBackup({ ...createInitialState(), tutorLessons: lessons }));
+    expect(tutorContinuation(backup.state.tutorLessons, first)).toEqual({
+      last: saved,
+      checkpoint: saved.resumeFrom,
+    });
+    expect(tutorContinuation(lessons).checkpoint).toBeUndefined();
+    const finished = { ...saved, startedAt: 130, resumeFrom: "" };
+    expect(tutorContinuation({ ...lessons, [crypto.randomUUID()]: finished }, first)).toEqual({
+      last: finished,
+      checkpoint: undefined,
     });
   });
   it("rejects malformed homework in imported backups", () => {

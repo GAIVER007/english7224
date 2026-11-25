@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getAppState, updateAppState } from "@/lib/store";
 import { ownsLocalProgress } from "@/lib/cloud-sync";
 import { TutorCall, type CallPhase } from "@/lib/tutor-call";
-import type { TutorSelection } from "@/lib/tutor";
+import { tutorContinuation, type TutorSelection } from "@/lib/tutor";
 
 function subscribeToNetwork(notify: () => void) {
   window.addEventListener("online", notify);
@@ -63,10 +63,7 @@ export function useTutorCall() {
       setError("Задание больше не доступно. Выберите другое задание.");
       return;
     }
-    const history = Object.values(state.tutorLessons ?? {})
-      .filter((lesson) => lesson.assignmentId === assignmentId)
-      .sort((a, b) => b.startedAt - a.startedAt);
-    const last = history[0];
+    const { last, checkpoint } = tutorContinuation(state.tutorLessons, assignmentId);
     const previous = last
       ? [
           last.summary,
@@ -108,7 +105,11 @@ export function useTutorCall() {
     void active.start(
       account.access_token,
       previous,
-      assignment && { title: assignment.title, text: assignment.text },
+      assignment && {
+        title: assignment.title,
+        text: assignment.text,
+        ...(checkpoint && { resumeFrom: checkpoint }),
+      },
     );
   }
 
