@@ -122,7 +122,15 @@ export class TutorCall {
     const event = relayEvent.parse(JSON.parse(raw));
     switch (event.type) {
       case "answer":
-        await this.peer!.setRemoteDescription({ type: "answer", sdp: event.sdp });
+        try {
+          // SDP is line-based. Some gateways omit the final CRLF that browsers require.
+          const sdp = event.sdp.trimEnd().replace(/\r\n?|\n/g, "\r\n") + "\r\n";
+          await this.peer!.setRemoteDescription({ type: "answer", sdp });
+        } catch {
+          this.close(
+            "Браузеру не удалось согласовать звук с Mira. Попробуйте начать звонок ещё раз.",
+          );
+        }
         break;
       case "caption":
         this.caption = (
