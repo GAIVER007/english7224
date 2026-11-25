@@ -3,9 +3,10 @@ import { useMemo, useState } from "react";
 import { ArrowLeft, AudioLines, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { useTutorCall } from "@/hooks/use-tutor-call";
 import { useAppState } from "@/lib/store";
-import { tutorLevels, tutorTopics, type TutorSettings } from "@/lib/tutor";
+import { tutorLevels, tutorTopics, validateTutorSearch, type TutorSettings } from "@/lib/tutor";
 
 export const Route = createFileRoute("/tutor")({
+  validateSearch: validateTutorSearch,
   component: TutorPage,
   head: () => ({ meta: [{ title: "Разговор с Mira · SpeakUp" }] }),
 });
@@ -13,9 +14,11 @@ export const Route = createFileRoute("/tutor")({
 function TutorPage() {
   const { state, update, ready } = useAppState();
   const call = useTutorCall();
-  const [topic, setTopic] = useState<TutorSettings["topic"]>(tutorTopics[0]);
+  const { tutor } = Route.useSearch();
+  const [selectedTopic, setTopic] = useState<TutorSettings["topic"]>();
+  const topic = selectedTopic ?? tutor?.topic ?? tutorTopics[0];
   const [selectedLevel, setLevel] = useState<TutorSettings["level"]>();
-  const level = selectedLevel ?? state.pathway?.selected ?? state.level ?? "A1";
+  const level = selectedLevel ?? tutor?.level ?? state.pathway?.selected ?? state.level ?? "A1";
   const busy = call.phase !== "idle";
   const history = useMemo(
     () =>
@@ -82,7 +85,13 @@ function TutorPage() {
         {busy && call.caption && <p className="rounded-xl bg-muted p-4">{call.caption}</p>}
         {call.error && <p role="alert">{call.error}</p>}
         <div className="flex flex-wrap gap-3">
+          {!busy && !call.online && (
+            <p role="status">
+              Для звонка нужен интернет. История занятий доступна на этом устройстве.
+            </p>
+          )}
           {!busy &&
+            call.online &&
             (call.signedIn ? (
               <button
                 disabled={!ready}
@@ -92,7 +101,7 @@ function TutorPage() {
                 <Phone size={17} /> Начать звонок
               </button>
             ) : (
-              <Link className="btn-primary" to="/account">
+              <Link className="btn-primary" to="/account" search={{ tutor: { topic, level } }}>
                 Войти для звонка
               </Link>
             ))}

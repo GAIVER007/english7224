@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getAppState, updateAppState } from "@/lib/store";
@@ -6,7 +6,21 @@ import { ownsLocalProgress } from "@/lib/cloud-sync";
 import { TutorCall, type CallPhase } from "@/lib/tutor-call";
 import type { TutorSettings } from "@/lib/tutor";
 
+function subscribeToNetwork(notify: () => void) {
+  window.addEventListener("online", notify);
+  window.addEventListener("offline", notify);
+  return () => {
+    window.removeEventListener("online", notify);
+    window.removeEventListener("offline", notify);
+  };
+}
+
 export function useTutorCall() {
+  const online = useSyncExternalStore(
+    subscribeToNetwork,
+    () => navigator.onLine,
+    () => true,
+  );
   const [phase, setPhase] = useState<CallPhase>("idle");
   const [signedIn, setSignedIn] = useState(false);
   const [caption, setCaption] = useState("");
@@ -33,6 +47,10 @@ export function useTutorCall() {
   }, []);
 
   function start(settings: TutorSettings) {
+    if (!navigator.onLine) {
+      setError("Для звонка нужен интернет.");
+      return;
+    }
     const account = session.current;
     if (!account || !audio.current || call.current) return;
     if (!ownsLocalProgress(account.user.id)) {
@@ -80,6 +98,7 @@ export function useTutorCall() {
     audio,
     phase,
     signedIn,
+    online,
     caption,
     error,
     muted,

@@ -55,7 +55,10 @@ vi.mock("@/lib/tutor-call", () => ({
   },
 }));
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: { component: ComponentType }) => ({ options }),
+  createFileRoute: () => (options: { component: ComponentType }) => ({
+    options,
+    useSearch: () => ({ tutor: { topic: "Работа", level: "B2" } }),
+  }),
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
 }));
 import { Route } from "./tutor";
@@ -87,4 +90,24 @@ it("saves an assignment at the end of the call and brings the completed task int
     "fixture",
     expect.stringContaining("Выполнено: Спросить дорогу."),
   );
+});
+
+it("keeps lesson settings while offline and enables calling when connectivity returns", async () => {
+  const network = vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+  try {
+    render(<Page />);
+    expect(screen.getByRole("status")).toHaveTextContent("Для звонка нужен интернет");
+    expect(screen.queryByRole("button", { name: "Начать звонок" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Мои занятия" })).toBeVisible();
+    network.mockReturnValue(true);
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+    expect(await screen.findByRole("button", { name: "Начать звонок" })).toBeEnabled();
+    expect(screen.getByLabelText("Тема")).toHaveValue("Работа");
+    expect(screen.getByLabelText("Уровень")).toHaveValue("B2");
+    expect(fixture.start).not.toHaveBeenCalled();
+  } finally {
+    network.mockRestore();
+  }
 });

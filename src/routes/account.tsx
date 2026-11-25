@@ -10,9 +10,12 @@ import {
   type SyncStatus,
 } from "@/lib/cloud-sync";
 import { SyncConflictPanel } from "@/components/SyncConflictPanel";
+import { validateTutorSearch } from "@/lib/tutor";
+import { currentStreak } from "@/lib/learning";
 import { useAppState } from "@/lib/store";
 
 export const Route = createFileRoute("/account")({
+  validateSearch: validateTutorSearch,
   head: () => ({
     meta: [
       { title: "Аккаунт — SpeakUp" },
@@ -56,6 +59,8 @@ const perks = [
 
 function AccountPage() {
   const { state } = useAppState();
+  const { tutor } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [email, setEmail] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [conflict, setConflict] = useState(getSyncConflict);
@@ -116,6 +121,7 @@ function AccountPage() {
         password: form.password,
       });
       if (error) setError("Не удалось войти. Проверь почту, пароль и подключение.");
+      else if (tutor) await navigate({ to: "/tutor", search: { tutor }, replace: true });
     } catch {
       setError("Нет связи с аккаунтом. Проверь интернет и повтори вход.");
     } finally {
@@ -177,9 +183,15 @@ function AccountPage() {
 
   return (
     <main className="mx-auto max-w-md space-y-6 px-4 py-6">
-      <Link to="/" className="text-sm text-muted-foreground">
-        ← На главную
-      </Link>
+      {tutor ? (
+        <Link to="/tutor" search={{ tutor }} className="text-sm text-muted-foreground">
+          ← К разговору с Mira
+        </Link>
+      ) : (
+        <Link to="/" className="text-sm text-muted-foreground">
+          ← На главную
+        </Link>
+      )}
 
       <section className="relative overflow-hidden rounded-2xl bg-primary p-6 text-primary-foreground shadow-lg">
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary-foreground/10" />
@@ -209,7 +221,7 @@ function AccountPage() {
 
           <div className="grid grid-cols-3 gap-2 text-center">
             <Stat value={state.xp} label="очков" />
-            <Stat value={state.streak ?? 0} label="дней подряд" />
+            <Stat value={currentStreak(state)} label="дней подряд" />
             <Stat value={state.resultHistory?.length ?? 0} label="результатов" />
           </div>
 
@@ -342,7 +354,7 @@ function AccountPage() {
             </button>
           </form>
           <p className="text-center text-xs text-muted-foreground">
-            Без входа всё работает, но прогресс хранится только на этом устройстве.
+            Курс доступен без входа. Аккаунт нужен для звонков Mira и синхронизации прогресса.
           </p>
         </>
       )}

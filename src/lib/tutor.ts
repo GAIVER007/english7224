@@ -17,6 +17,12 @@ export const tutorLesson = tutorSettings.merge(lessonNotes).extend({
 });
 export type TutorLesson = z.infer<typeof tutorLesson>;
 export type TutorSettings = z.infer<typeof tutorSettings>;
+/** Only carry a known lesson selection across the account and tutor routes. */
+export function validateTutorSearch(search: Record<string, unknown>): { tutor?: TutorSettings } {
+  const selection = tutorSettings.safeParse(search["tutor"]);
+  return selection.success ? { tutor: selection.data } : {};
+}
+
 export const tutorHistory = z.record(z.string().uuid(), tutorLesson);
 
 export const tutorPath = "/api/tutor/live";

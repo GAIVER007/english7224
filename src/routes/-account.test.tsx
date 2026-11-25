@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { ComponentType, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const navigation = vi.hoisted(() => ({ search: vi.fn(), go: vi.fn() }));
 const auth = vi.hoisted(() => ({
   getUser: vi.fn(),
   signInWithPassword: vi.fn(),
@@ -17,13 +18,20 @@ vi.mock("@/lib/cloud-sync", () => ({
   retrySync: vi.fn(),
 }));
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (options: { component: ComponentType }) => ({ options }),
+  createFileRoute: () => (options: { component: ComponentType }) => ({
+    options,
+    useSearch: navigation.search,
+    useNavigate: () => navigation.go,
+  }),
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }));
 import { Route } from "./account";
 const Account = Route.options.component as ComponentType;
 afterEach(cleanup);
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  navigation.search.mockReturnValue({});
+});
 
 describe("account network recovery", () => {
   it("shows a usable sign-in form after account lookup rejects", async () => {
@@ -47,3 +55,28 @@ describe("account network recovery", () => {
     expect(screen.getByRole("button", { name: "Войти" })).not.toBeDisabled();
   });
 });
+
+it.each([true, false])(
+  "returns to a requested tutor lesson only after a successful sign-in (from tutor: %s)",
+  async (fromTutor) => {
+    const tutor = { topic: "Работа", level: "B2" };
+    navigation.search.mockReturnValue(fromTutor ? { tutor } : {});
+    auth.getUser.mockResolvedValue({ data: { user: null } });
+    auth.signInWithPassword.mockResolvedValue({ error: null });
+    render(<Account />);
+    fireEvent.change(await screen.findByLabelText("Почта"), {
+      target: { value: "learner@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Пароль"), { target: { value: "test-password" } });
+    await act(async () => {
+      fireEvent.submit(screen.getByRole("button", { name: "Войти" }).closest("form")!);
+    });
+    if (fromTutor)
+      expect(navigation.go).toHaveBeenCalledWith({
+        to: "/tutor",
+        search: { tutor },
+        replace: true,
+      });
+    else expect(navigation.go).not.toHaveBeenCalled();
+  },
+);

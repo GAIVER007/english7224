@@ -9,5 +9,5 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Learner progress lives in browser localStorage via src/lib/store.ts and lesson content in src/lib/content.ts — no backend yet; move to Cloud when accounts are added.
+- Learner progress, including Mira lesson notes and homework, lives in browser localStorage via src/lib/store.ts. Mission content is in src/lib/content.ts and the A0–C1 program is in src/lib/pathway/.
 - Signed-in learners' progress syncs to Cloud table user_progress via src/lib/cloud-sync.ts (localStorage stays the working copy; three-way merge against a per-account baseline; conflicting records require an explicit choice) — keeps rating across devices.
