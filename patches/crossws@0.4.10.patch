@@ -1,0 +1,13 @@
+diff --git a/dist/adapters/cloudflare.mjs b/dist/adapters/cloudflare.mjs
+index bdf26ddd2b3255751ae7ab3fe8620e0a43cbf59e..31708685d8711b7f858cafd97a0ab9cdff725487 100644
+--- a/dist/adapters/cloudflare.mjs
++++ b/dist/adapters/cloudflare.mjs
+@@ -162,7 +162,7 @@ var CloudflareFallbackPeer = class extends Peer {
+ 		console.warn("[crossws] [cloudflare] pub/sub support requires Durable Objects.");
+ 	}
+ 	close(code, reason) {
+-		this._internal.ws.close(code, reason);
++		this._internal.wsServer.close(code, reason);
+ 	}
+ };
+ function getAttachedState(ws) {

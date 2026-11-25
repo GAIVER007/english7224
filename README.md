@@ -196,9 +196,10 @@ Supabase. Сервер должен принимать WebSocket на `/api/tuto
 проверка установки и производительности моделей на реальном телефоне. Аккаунты и сервер не обязательны. Тест уровня не является
 сертификацией CEFR. Подробный аудит и оставшаяся работа: [docs/READINESS.md](docs/READINESS.md).
 
-Проект связан с [Lovable](https://lovable.dev/projects/b338cfa4-0c74-4347-aae7-c2e52c3a88a3).
+Проект связан с [Lovable](https://lovable.dev/projects/lovp_0thtft4d3p970btvm97s3db5jp).
 Историю опубликованных коммитов нельзя переписывать; изменения main синхронизируются
-с редактором Lovable.
+с редактором Lovable. Чтобы обновить `english7224.lovable.app`, откройте этот
+проект и нажмите **Publish → Publish changes**.
 
 
 ## Учебные принципы и геймификация
