@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeft, AudioLines, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
+import { TeacherHomework } from "@/components/TeacherHomework";
 import { useTutorCall } from "@/hooks/use-tutor-call";
 import { useAppState } from "@/lib/store";
 import { tutorLevels, tutorTopics, validateTutorSearch, type TutorSettings } from "@/lib/tutor";
@@ -19,6 +20,9 @@ function TutorPage() {
   const topic = selectedTopic ?? tutor?.topic ?? tutorTopics[0];
   const [selectedLevel, setLevel] = useState<TutorSettings["level"]>();
   const level = selectedLevel ?? tutor?.level ?? state.pathway?.selected ?? state.level ?? "A1";
+  const [chosenId, chooseAssignment] = useState<string>();
+  const assignmentId = chosenId ?? tutor?.assignmentId ?? "";
+  const selection = { topic, level, ...(assignmentId ? { assignmentId } : {}) };
   const busy = call.phase !== "idle";
   const history = useMemo(
     () =>
@@ -43,19 +47,22 @@ function TutorPage() {
             <h1 className="text-3xl font-bold">Разговор с Mira</h1>
           </div>
         </div>
+        <TeacherHomework selectedId={assignmentId} onSelect={chooseAssignment} disabled={busy} />
         <fieldset disabled={busy} className="flex flex-wrap gap-4">
-          <label>
-            Тема
-            <select
-              className="block rounded-lg border p-2"
-              value={topic}
-              onChange={(e) => setTopic(tutorTopics[e.target.selectedIndex]!)}
-            >
-              {tutorTopics.map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-          </label>
+          {!assignmentId && (
+            <label>
+              Тема
+              <select
+                className="block rounded-lg border p-2"
+                value={topic}
+                onChange={(e) => setTopic(tutorTopics[e.target.selectedIndex]!)}
+              >
+                {tutorTopics.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Уровень
             <select
@@ -94,14 +101,14 @@ function TutorPage() {
             call.online &&
             (call.signedIn ? (
               <button
-                disabled={!ready}
+                disabled={!ready || (!!assignmentId && !state.teacherAssignments?.[assignmentId])}
                 className="btn-primary"
-                onClick={() => call.start({ topic, level })}
+                onClick={() => call.start(selection)}
               >
-                <Phone size={17} /> Начать звонок
+                <Phone size={17} /> {assignmentId ? "Разобрать с Mira" : "Начать звонок"}
               </button>
             ) : (
-              <Link className="btn-primary" to="/account" search={{ tutor: { topic, level } }}>
+              <Link className="btn-primary" to="/account" search={{ tutor: selection }}>
                 Войти для звонка
               </Link>
             ))}
@@ -132,7 +139,7 @@ function TutorPage() {
             <small>
               {new Date(lesson.startedAt).toLocaleString("ru")} · {lesson.level}
             </small>
-            <h3 className="font-bold">{lesson.topic}</h3>
+            <h3 className="font-bold">{lesson.assignmentTitle ?? lesson.topic}</h3>
             <p>{lesson.summary}</p>
             {lesson.homework && (
               <label className="flex items-start gap-2">

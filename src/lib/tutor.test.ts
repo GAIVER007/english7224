@@ -3,7 +3,7 @@ import { createBackup, parseBackup } from "./backup";
 import { createInitialState, validateAppStateForImport } from "./store";
 import { mergeAppStates } from "./sync-merge";
 import { TutorCall } from "./tutor-call";
-import type { TutorLesson } from "./tutor";
+import { assignmentTextLimit, validateTutorSearch, type TutorLesson } from "./tutor";
 
 const first = "04baca84-36e7-438f-9af2-1278734d8bca";
 const second = "d471df79-9f87-42be-adb4-9417fe2e07ed";
@@ -34,6 +34,47 @@ describe("tutor progress", () => {
     expect(parseBackup(createBackup(merged.state!)).state.tutorLessons).toEqual({
       ...cloud.tutorLessons,
       ...local.tutorLessons,
+    });
+  });
+  it("migrates old homework libraries and syncs new assignments and completion across backups", () => {
+    const old = createInitialState();
+    delete old.teacherAssignments;
+    const base = validateAppStateForImport(old);
+    expect(base.teacherAssignments).toEqual({});
+    const assignment = {
+      title: "Questions",
+      text: "Where is the station?",
+      done: false,
+      createdAt: 10,
+    };
+    base.teacherAssignments = { [first]: assignment };
+    const local = { ...base, teacherAssignments: { [first]: { ...assignment, done: true } } };
+    const cloud = {
+      ...base,
+      teacherAssignments: {
+        ...base.teacherAssignments,
+        [second]: { ...assignment, title: "Lesson 2" },
+      },
+    };
+    const merged = mergeAppStates(base, local, cloud);
+    expect(merged.conflict).toBeNull();
+    expect(parseBackup(createBackup(merged.state!)).state.teacherAssignments).toEqual({
+      ...cloud.teacherAssignments,
+      ...local.teacherAssignments,
+    });
+    expect(() =>
+      validateAppStateForImport({
+        ...base,
+        teacherAssignments: {
+          [first]: { ...assignment, text: "x".repeat(assignmentTextLimit + 1) },
+        },
+      }),
+    ).toThrow("teacherAssignments");
+  });
+  it("carries the assignment ID through sign-in without its content", () => {
+    const tutor = { topic: "Работа", level: "A2", assignmentId: first };
+    expect(validateTutorSearch({ tutor: { ...tutor, text: "private exercise" } })).toEqual({
+      tutor,
     });
   });
   it("rejects malformed homework in imported backups", () => {

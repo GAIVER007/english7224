@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getAppState, updateAppState } from "@/lib/store";
 import { ownsLocalProgress } from "@/lib/cloud-sync";
 import { TutorCall, type CallPhase } from "@/lib/tutor-call";
-import type { TutorSettings } from "@/lib/tutor";
+import type { TutorSelection } from "@/lib/tutor";
 
 function subscribeToNetwork(notify: () => void) {
   window.addEventListener("online", notify);
@@ -46,7 +46,7 @@ export function useTutorCall() {
     };
   }, []);
 
-  function start(settings: TutorSettings) {
+  function start({ assignmentId, ...settings }: TutorSelection) {
     if (!navigator.onLine) {
       setError("Для звонка нужен интернет.");
       return;
@@ -57,9 +57,15 @@ export function useTutorCall() {
       setError("Проверьте синхронизацию прогресса на странице аккаунта.");
       return;
     }
-    const history = Object.values(getAppState().tutorLessons ?? {}).sort(
-      (a, b) => b.startedAt - a.startedAt,
-    );
+    const state = getAppState();
+    const assignment = assignmentId ? state.teacherAssignments?.[assignmentId] : undefined;
+    if (assignmentId && !assignment) {
+      setError("Задание больше не доступно. Выберите другое задание.");
+      return;
+    }
+    const history = Object.values(state.tutorLessons ?? {})
+      .filter((lesson) => lesson.assignmentId === assignmentId)
+      .sort((a, b) => b.startedAt - a.startedAt);
     const last = history[0];
     const previous = last
       ? [
@@ -87,11 +93,23 @@ export function useTutorCall() {
       },
       save(id, record) {
         if (session.current?.user.id === account.user.id && ownsLocalProgress(account.user.id))
-          updateAppState((s) => ({ ...s, tutorLessons: { ...s.tutorLessons, [id]: record } }));
+          updateAppState((s) => ({
+            ...s,
+            tutorLessons: {
+              ...s.tutorLessons,
+              [id]: assignment
+                ? { ...record, assignmentId, assignmentTitle: assignment.title }
+                : record,
+            },
+          }));
       },
     });
     call.current = active;
-    void active.start(account.access_token, previous);
+    void active.start(
+      account.access_token,
+      previous,
+      assignment && { title: assignment.title, text: assignment.text },
+    );
   }
 
   return {

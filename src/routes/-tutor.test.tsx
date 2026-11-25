@@ -31,8 +31,8 @@ vi.mock("@/lib/tutor-call", () => ({
         ended: (msg: string) => void;
       },
     ) {}
-    start(token: string, previous: string) {
-      fixture.start(token, previous);
+    start(token: string, previous: string, assignment?: { title: string; text: string }) {
+      fixture.start(token, previous, assignment);
       this.callbacks.phase("active");
       this.callbacks.caption("Mira: Hi, Yuri!");
     }
@@ -41,7 +41,7 @@ vi.mock("@/lib/tutor-call", () => ({
     }
     finish() {
       fixture.finish();
-      this.callbacks.save("803c09ee-0465-4874-81d2-bbc6c0aa15f3", {
+      this.callbacks.save(crypto.randomUUID(), {
         ...this.settings,
         startedAt: 80,
         seconds: 13,
@@ -89,6 +89,7 @@ it("saves an assignment at the end of the call and brings the completed task int
   expect(fixture.start).toHaveBeenLastCalledWith(
     "fixture",
     expect.stringContaining("Выполнено: Спросить дорогу."),
+    undefined,
   );
 });
 
@@ -110,4 +111,42 @@ it("keeps lesson settings while offline and enables calling when connectivity re
   } finally {
     network.mockRestore();
   }
+});
+
+it("saves teacher homework separately and resumes only the selected exercise", async () => {
+  render(<Page />);
+  async function add(title: string, text: string) {
+    fireEvent.click(await screen.findByRole("button", { name: "Добавить задание" }));
+    fireEvent.change(screen.getByLabelText("Название задания"), { target: { value: title } });
+    fireEvent.change(screen.getByLabelText("Текст для разбора"), { target: { value: text } });
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить задание" }));
+  }
+  await add("Lesson 3", "Ask for a room.");
+  const [id] = Object.keys(getAppState().teacherAssignments!);
+  fireEvent.click(screen.getByRole("button", { name: "Разобрать с Mira" }));
+  expect(fixture.start).toHaveBeenLastCalledWith("fixture", "", {
+    title: "Lesson 3",
+    text: "Ask for a room.",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Завершить звонок" }));
+  expect(getAppState().teacherAssignments![id!]!.done).toBe(false);
+  expect(screen.getByRole("heading", { name: "Lesson 3" })).toBeVisible();
+  fireEvent.click(screen.getByRole("checkbox", { name: "Задание выполнено" }));
+  await add("Lesson 4", "Order a coffee.");
+  fireEvent.click(screen.getByRole("button", { name: "Разобрать с Mira" }));
+  expect(fixture.start).toHaveBeenLastCalledWith("fixture", "", {
+    title: "Lesson 4",
+    text: "Order a coffee.",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Завершить звонок" }));
+  cleanup();
+  render(<Page />);
+  fireEvent.change(screen.getByLabelText("Материал занятия"), { target: { value: id } });
+  expect(screen.getByRole("checkbox", { name: "Задание выполнено" })).toBeChecked();
+  fireEvent.click(screen.getByRole("button", { name: "Разобрать с Mira" }));
+  expect(fixture.start).toHaveBeenLastCalledWith(
+    "fixture",
+    expect.stringContaining("дорогу к отелю"),
+    { title: "Lesson 3", text: "Ask for a room." },
+  );
 });

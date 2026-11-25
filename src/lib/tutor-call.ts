@@ -1,4 +1,10 @@
-import { relayEvent, tutorPath, type TutorSettings, type TutorLesson } from "./tutor";
+import {
+  relayEvent,
+  tutorPath,
+  type AssignmentMaterial,
+  type TutorSettings,
+  type TutorLesson,
+} from "./tutor";
 
 export type CallPhase = "idle" | "connecting" | "active" | "finishing";
 interface CallCallbacks {
@@ -31,7 +37,7 @@ export class TutorCall {
     private callbacks: CallCallbacks,
   ) {}
 
-  async start(token: string, previous: string) {
+  async start(token: string, previous: string, assignment?: AssignmentMaterial) {
     this.timeout(45000, "Не удалось установить связь с Mira.");
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === "undefined")
@@ -89,6 +95,7 @@ export class TutorCall {
             ...this.settings,
             token,
             previous,
+            assignment,
             sdp: peer.localDescription?.sdp,
           }),
         );
