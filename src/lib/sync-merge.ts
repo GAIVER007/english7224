@@ -163,6 +163,7 @@ export function mergeAppStates(
   );
   const dailyGoal = atomic(baseline.dailyGoal, local.dailyGoal, cloud.dailyGoal);
   const weeklyResult = atomic(baseline.weeklyResult, local.weeklyResult, cloud.weeklyResult);
+  const tutorLessons = atomicRecord(baseline.tutorLessons, local.tutorLessons, cloud.tutorLessons);
   const cards = atomicRecord(baseline.cards, local.cards, cloud.cards);
   const examResults = atomicRecord(baseline.examResults, local.examResults, cloud.examResults);
   const grammarCards = atomicRecord(baseline.grammarCards, local.grammarCards, cloud.grammarCards);
@@ -197,6 +198,7 @@ export function mergeAppStates(
     lastActive: activityRun.local.lastActive,
     streak: activityRun.local.streak,
     dailyGoal: dailyGoal.local!,
+    tutorLessons: tutorLessons.local,
     cards: cards.local,
     examResults: examResults.local,
     grammarCards: grammarCards.local,
@@ -211,6 +213,7 @@ export function mergeAppStates(
     lastActive: activityRun.cloud.lastActive,
     streak: activityRun.cloud.streak,
     dailyGoal: dailyGoal.cloud!,
+    tutorLessons: tutorLessons.cloud,
     cards: cards.cloud,
     examResults: examResults.cloud,
     grammarCards: grammarCards.cloud,
@@ -227,6 +230,7 @@ export function mergeAppStates(
     activityRun.conflict ||
     dailyGoal.conflict ||
     weeklyResult.conflict ||
+    tutorLessons.conflict ||
     cards.conflict ||
     examResults.conflict ||
     grammarCards.conflict ||

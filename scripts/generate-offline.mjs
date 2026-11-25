@@ -15,6 +15,7 @@ const shellRoutes = [
   "/weekly",
   "/course",
   "/account",
+  "/tutor",
 ];
 const shellFiles = new Set([
   "/favicon.ico",

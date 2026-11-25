@@ -1,3 +1,4 @@
+import { tutorHistory, type TutorLesson } from "./tutor";
 import { useCallback, useSyncExternalStore } from "react";
 import { z } from "zod";
 import { xpLedgerSchema, ledgerTotal, type XpLedger } from "./xp-ledger";
@@ -57,6 +58,7 @@ export interface AppState {
   grammarHistory?: boolean[];
   grammarCards?: Record<string, CardState>;
   pathway?: PathState;
+  tutorLessons?: Record<string, TutorLesson>;
   resultHistory?: ResultRecord[];
 }
 
@@ -80,6 +82,7 @@ export function createInitialState(): AppState {
     grammarHistory: [],
     grammarCards: {},
     pathway: emptyPath(),
+    tutorLessons: {},
     resultHistory: [],
   };
 }
@@ -165,6 +168,7 @@ const fieldSchemas = {
   grammarHistory: z.array(z.boolean()).max(100),
   grammarCards: z.record(cardSchema),
   pathway: pathStateSchema,
+  tutorLessons: tutorHistory,
   resultHistory: z.array(
     z
       .object({
@@ -200,6 +204,7 @@ const migratedDefaultFields = new Set([
   "grammarCards",
   "pathway",
   "resultHistory",
+  "tutorLessons",
 ]);
 
 interface StoreSnapshot {

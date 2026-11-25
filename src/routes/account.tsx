@@ -185,9 +185,7 @@ function AccountPage() {
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary-foreground/10" />
         <div className="absolute -bottom-10 -left-6 h-24 w-24 rounded-full bg-primary-foreground/10" />
         <p className="relative text-sm opacity-80">SpeakUp</p>
-        <h1 className="relative mt-1 text-2xl font-bold">
-          {email ? "Ваш аккаунт" : "Аккаунт"}
-        </h1>
+        <h1 className="relative mt-1 text-2xl font-bold">{email ? "Ваш аккаунт" : "Аккаунт"}</h1>
         <p className="relative mt-2 text-sm opacity-90">
           {email
             ? "Весь прогресс сохраняется в облаке автоматически."

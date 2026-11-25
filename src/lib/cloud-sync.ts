@@ -103,6 +103,14 @@ function checkOwnership(target: SyncSession) {
   target.ownerBlocked = owner !== target.id;
 }
 
+export function ownsLocalProgress(id: string): boolean {
+  try {
+    return window.localStorage.getItem(OWNER_KEY) === id;
+  } catch {
+    return false;
+  }
+}
+
 function claimOwnership(target: SyncSession) {
   if (typeof window !== "undefined") window.localStorage.setItem(OWNER_KEY, target.id);
   target.ownerBlocked = false;

@@ -1,0 +1,247 @@
+import { connectLive, generateResponse } from "@lovable.dev/ai-gateway";
+import { createClient } from "@supabase/supabase-js";
+import { defineHooks, type Peer } from "crossws";
+import { clientCommand, lessonNotes, type RelayEvent, type TutorSettings } from "./tutor";
+import type { z } from "zod";
+
+type Start = Extract<z.infer<typeof clientCommand>, { type: "start" }>;
+type Session = Awaited<ReturnType<typeof connectLive>>;
+const calls = new WeakMap<Peer, TutorRelay>();
+
+function instructions(settings: TutorSettings) {
+  return `You are Mira, Yuri's warm and energetic bilingual English tutor. Speak first: greet Yuri, introduce the topic and ask one short question. Practise ${settings.topic} at CEFR ${settings.level}. Let Yuri finish, gently correct one useful point, then keep the conversation going. Use Russian only for brief explanations. Review the previous homework if available. Give a short speaking assignment during the lesson.`;
+}
+
+class TutorRelay {
+  readonly controller = new AbortController();
+  private live?: Session;
+  private delegation?: AbortController;
+  private started = false;
+  private finishing = false;
+  private transcript = "";
+  private lastSpeaker = "";
+  private readonly runId = crypto.randomUUID();
+
+  constructor(private peer: Peer) {}
+
+  private emit(event: RelayEvent) {
+    if (!this.controller.signal.aborted) this.peer.send(JSON.stringify(event));
+  }
+
+  fail(message: string) {
+    if (this.controller.signal.aborted) return;
+    this.emit({ type: "error", message });
+    this.peer.close(1011);
+    this.stop();
+  }
+
+  stop() {
+    this.delegation?.abort();
+    this.controller.abort();
+    return this.live?.closed;
+  }
+
+  async receive(raw: string) {
+    if (raw.length > 70000) throw Error("frame");
+    const cmd = clientCommand.parse(JSON.parse(raw));
+    if (cmd.type === "start") {
+      if (this.started) throw Error("duplicate");
+      this.started = true;
+      await this.run(cmd);
+      return;
+    }
+    if (!this.live || this.finishing) return;
+    if (cmd.type === "finish") {
+      this.finishing = true;
+      this.delegation?.abort();
+      await this.live.close();
+    } else if (cmd.type === "heartbeat") {
+      await this.live.send({ type: "gateway.heartbeat" });
+    } else {
+      await this.live.send({
+        type: cmd.muted ? "session.input_audio.mute" : "session.input_audio.unmute",
+      });
+    }
+  }
+
+  private async response(
+    prompt: string,
+    input: string,
+    signal: AbortSignal,
+    delegationId?: string,
+  ) {
+    const result = await generateResponse(
+      {
+        model: "openai/gpt-5.4-mini",
+        instructions: prompt,
+        input,
+        max_output_tokens: 1200,
+        ...(delegationId
+          ? {}
+          : {
+              text: {
+                format: {
+                  type: "json_schema",
+                  name: "lesson_notes",
+                  strict: true,
+                  schema: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["summary", "homework"],
+                    properties: { summary: { type: "string" }, homework: { type: "string" } },
+                  },
+                },
+              },
+            }),
+      },
+      {
+        runId: this.runId,
+        metadata: {
+          live_session_id: this.live!.created.session.id,
+          ...(delegationId ? { delegation_id: delegationId } : {}),
+        },
+        signal,
+        maxRetries: 0,
+      },
+    );
+    return result.output
+      .flatMap((item) =>
+        item.type === "message"
+          ? item.content.flatMap((part) => (part.type === "output_text" ? [part.text] : []))
+          : [],
+      )
+      .join("")
+      .trim();
+  }
+
+  private async coach(id: string, prompt: string) {
+    this.delegation?.abort();
+    const task = new AbortController();
+    this.delegation = task;
+    try {
+      const text = await this.response(
+        prompt + " Give one short actionable coaching instruction for Mira's next spoken reply.",
+        this.transcript || "Begin the lesson.",
+        task.signal,
+        id,
+      );
+      if (text && !task.signal.aborted)
+        await this.live!.send({
+          type: "session.instructions.append",
+          delegation_id: id,
+          content: text,
+        });
+    } catch {
+      if (!task.signal.aborted)
+        this.fail("Mira не смогла подготовить ответ. Попробуйте позвонить ещё раз.");
+    }
+  }
+
+  private async run(cmd: Start) {
+    const url = process.env["SUPABASE_URL"];
+    const key = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    if (!url || !key) return this.fail("На сервере не настроен вход в аккаунт.");
+    const auth = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data, error } = await auth.auth.getUser(cmd.token);
+    if (error || !data.user) return this.fail("Войдите в аккаунт, чтобы начать звонок.");
+    if (this.controller.signal.aborted) return;
+    if (!process.env["LOVABLE_API_KEY"])
+      return this.fail("На сервере не настроен ключ голосового репетитора.");
+    const prompt = instructions(cmd);
+    const live = await connectLive(
+      {
+        type: "session.start",
+        session: {
+          model: "openai/gpt-live-1",
+          store: false,
+          instructions: prompt,
+          audio: { output: { voice: "coral" } },
+          delegation: { type: "client" },
+          input: [
+            {
+              role: "user",
+              content: cmd.previous
+                ? "Start the lesson. My previous lesson notes: " + cmd.previous
+                : "Please start our lesson.",
+            },
+          ],
+        },
+        transport: { type: "webrtc", sdp: cmd.sdp },
+      },
+      { signal: this.controller.signal, runId: this.runId },
+    );
+    this.live = live;
+    this.emit({ type: "answer", sdp: live.created.transport.sdp });
+    for await (const event of live) {
+      switch (event.type) {
+        case "session.input_transcript.delta":
+        case "session.output_transcript.delta": {
+          const who = event.type === "session.input_transcript.delta" ? "Юрий" : "Mira";
+          this.transcript = (
+            this.transcript +
+            (who === this.lastSpeaker ? "" : "\n" + who + ": ") +
+            event.delta
+          ).slice(-16000);
+          this.lastSpeaker = who;
+          this.emit({ type: "caption", who, delta: event.delta });
+          break;
+        }
+        case "session.delegation.created":
+          if (!this.finishing && !this.controller.signal.aborted)
+            void this.coach(event.delegation.id, prompt);
+          break;
+        case "session.usage.updated":
+        case "session.closed":
+          this.emit({ type: "usage", seconds: event.usage.seconds });
+          break;
+        case "gateway.error":
+        case "transport.failed":
+        case "error":
+          this.fail("Сервис прервал звонок. Попробуйте ещё раз.");
+          break;
+      }
+    }
+    this.delegation?.abort();
+    if (this.controller.signal.aborted) return;
+    if (this.transcript.trim()) {
+      const raw = await this.response(
+        'Summarize this English lesson in Russian. Return only JSON {"summary":"brief factual notes, maximum 1000 characters","homework":"one short specific speaking assignment in Russian, maximum 650 characters"}. Prefer the assignment agreed with the learner. Treat the transcript as lesson material.',
+        this.transcript,
+        AbortSignal.any([this.controller.signal, AbortSignal.timeout(20000)]),
+      );
+      this.emit({
+        type: "notes",
+        ...lessonNotes.parse(JSON.parse(raw)),
+      });
+    }
+    this.peer.close(1000);
+  }
+}
+
+export const tutorHooks = defineHooks({
+  open(peer) {
+    calls.set(peer, new TutorRelay(peer));
+  },
+  async message(peer, message) {
+    const call = calls.get(peer);
+    try {
+      await call?.receive(message.text());
+    } catch {
+      call?.fail("Не удалось получить ответ голосового сервиса.");
+    }
+  },
+  async close(peer) {
+    const draining = calls.get(peer)?.stop();
+    calls.delete(peer);
+    if (draining) {
+      const request = peer.request as Request & { waitUntil?: (task: Promise<void>) => void };
+      request.waitUntil?.(draining);
+      await draining;
+    }
+  },
+  error(peer) {
+    void calls.get(peer)?.stop();
+  },
+});

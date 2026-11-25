@@ -1,3 +1,4 @@
+import { tutorDev } from "./scripts/tutor-dev";
 // @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
 // or the app will break with duplicate plugins:
 //   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,
@@ -31,7 +32,7 @@ function offlineWorkerPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [offlineWorkerPlugin()],
+  plugins: [tutorDev(), offlineWorkerPlugin()],
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

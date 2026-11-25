@@ -65,6 +65,9 @@ function Home() {
             Я уже знаю свой уровень
           </Link>
         </div>
+        <Link to="/tutor" className="btn-ghost">
+          Разговор с Mira
+        </Link>
         <Link to="/account" className="btn-ghost">
           Войти в аккаунт
         </Link>
@@ -131,6 +134,16 @@ function Home() {
           </Link>
         </div>
         <div className="training-tools">
+          <Link to="/tutor" className="training-tool">
+            <span className="course-icon">
+              <Sparkles size={24} aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Разговор с Mira</h3>
+              <p>Практика с голосовым репетитором</p>
+            </div>
+            <ArrowRight size={18} aria-hidden="true" />
+          </Link>
           <Link to="/lesson" search={{ free: true }} className="training-tool">
             <span className="course-icon">
               <PencilLine size={24} aria-hidden="true" />

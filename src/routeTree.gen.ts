@@ -16,6 +16,7 @@ import { Route as LessonRouteImport } from './routes/lesson'
 import { Route as PlacementRouteImport } from './routes/placement'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as TranslateRouteImport } from './routes/translate'
+import { Route as TutorRouteImport } from './routes/tutor'
 import { Route as WeeklyRouteImport } from './routes/weekly'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const TranslateRoute = TranslateRouteImport.update({
   path: '/translate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TutorRoute = TutorRouteImport.update({
+  id: '/tutor',
+  path: '/tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WeeklyRoute = WeeklyRouteImport.update({
   id: '/weekly',
   path: '/weekly',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
   '/translate': typeof TranslateRoute
+  '/tutor': typeof TutorRoute
   '/weekly': typeof WeeklyRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
   '/translate': typeof TranslateRoute
+  '/tutor': typeof TutorRoute
   '/weekly': typeof WeeklyRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/placement': typeof PlacementRoute
   '/progress': typeof ProgressRoute
   '/translate': typeof TranslateRoute
+  '/tutor': typeof TutorRoute
   '/weekly': typeof WeeklyRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/placement'
     | '/progress'
     | '/translate'
+    | '/tutor'
     | '/weekly'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/placement'
     | '/progress'
     | '/translate'
+    | '/tutor'
     | '/weekly'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/placement'
     | '/progress'
     | '/translate'
+    | '/tutor'
     | '/weekly'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   PlacementRoute: typeof PlacementRoute
   ProgressRoute: typeof ProgressRoute
   TranslateRoute: typeof TranslateRoute
+  TutorRoute: typeof TutorRoute
   WeeklyRoute: typeof WeeklyRoute
 }
 
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TranslateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tutor': {
+      id: '/tutor'
+      path: '/tutor'
+      fullPath: '/tutor'
+      preLoaderRoute: typeof TutorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/weekly': {
       id: '/weekly'
       path: '/weekly'
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlacementRoute: PlacementRoute,
   ProgressRoute: ProgressRoute,
   TranslateRoute: TranslateRoute,
+  TutorRoute: TutorRoute,
   WeeklyRoute: WeeklyRoute,
 }
 export const routeTree = rootRouteImport
