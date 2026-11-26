@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { MessageCircle, Volume2 } from "lucide-react";
+import { MessageCircle, Mic, Volume2 } from "lucide-react";
+import { SpeakingRecorder } from "./SpeakingRecorder";
+import { transcribeTutorMessage, voiceTutorReply } from "@/lib/tutor-audio.functions";
 import { ownsLocalProgress } from "@/lib/cloud-sync";
 import { speak, useAppState } from "@/lib/store";
 import {
@@ -26,16 +28,34 @@ type Props = {
 };
 const emptyPage: WrittenPage = { draft: "", exchanges: [] };
 
-export function WrittenTutor({ callFailed, ...props }: Props & { callFailed: boolean }) {
+export function WrittenTutor({
+  callFailed,
+  resumeWritten,
+  ...props
+}: Props & { callFailed: boolean; resumeWritten: boolean }) {
   const [open, setOpen] = useState(false);
+  const [recordingOpen, setRecordingOpen] = useState(false);
   const { update } = useAppState();
   const { assignment, selection } = props;
   const id = selection.assignmentId;
-  if (!open && !callFailed)
+  function openWorkbook(recording: boolean) {
+    setOpen(true);
+    setRecordingOpen(recording);
+    move(assignment?.writtenStep ?? 0);
+  }
+  const recordButton = props.userId && props.online && (
+    <button className="btn-ghost" type="button" onClick={() => openWorkbook(true)}>
+      <Mic size={17} /> Голосовое сообщение
+    </button>
+  );
+  if (!open && !callFailed && !resumeWritten)
     return (
-      <button className="btn-ghost" type="button" onClick={() => setOpen(true)}>
-        <MessageCircle size={17} /> {id ? "Разобрать письменно" : "Написать Mira"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-ghost" type="button" onClick={() => openWorkbook(false)}>
+          <MessageCircle size={17} /> {id ? "Разобрать письменно" : "Написать Mira"}
+        </button>
+        {recordButton}
+      </div>
     );
   const material = assignment && worksheet(assignment.text);
   const count = material?.exercises.length ?? 1;
@@ -47,14 +67,23 @@ export function WrittenTutor({ callFailed, ...props }: Props & { callFailed: boo
       return item
         ? {
             ...s,
-            teacherAssignments: { ...s.teacherAssignments, [id]: { ...item, writtenStep: next } },
+            teacherAssignments: {
+              ...s.teacherAssignments,
+              [id]: { ...item, writtenStep: next, writtenAt: Date.now() },
+            },
           }
         : s;
     });
   }
   return (
     <section aria-label="Письменный разбор" className="space-y-3 rounded-2xl border p-4">
-      <h2 className="text-lg font-bold">{assignment ? "Письменный разбор" : "Переписка с Mira"}</h2>
+      <h2 className="text-lg font-bold">
+        {(callFailed || recordingOpen) && props.online && props.userId
+          ? "Разговор голосовыми сообщениями"
+          : assignment
+            ? "Письменный разбор"
+            : "Переписка с Mira"}
+      </h2>
       {material && (
         <>
           {count > 1 && (
@@ -75,12 +104,18 @@ export function WrittenTutor({ callFailed, ...props }: Props & { callFailed: boo
             </div>
           )}
           {material.intro && <p className="whitespace-pre-wrap break-words">{material.intro}</p>}
-          <p className="whitespace-pre-wrap break-words rounded-xl bg-muted p-3">
+          <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-muted p-3">
             {material.exercises[step]}
           </p>
         </>
       )}
-      <WrittenConversation key={step} {...props} step={step} />
+      {!recordingOpen && !callFailed && recordButton}
+      <WrittenConversation
+        key={step}
+        {...props}
+        step={step}
+        showRecorder={recordingOpen || callFailed}
+      />
     </section>
   );
 }
@@ -91,10 +126,21 @@ function WrittenConversation({
   userId,
   online,
   step,
-}: Props & { step: number }) {
+  showRecorder,
+}: Props & { step: number; showRecorder: boolean }) {
   const { update, storageError } = useAppState();
   const [topicPage, setTopicPage] = useState(emptyPage);
-  const [pending, setPending] = useState(false);
+  const [progress, setProgress] = useState("");
+  const pending = !!progress;
+  const [replyAudio, setReplyAudio] = useState("");
+  const player = useRef<HTMLAudioElement>(null);
+  const transcripts = useRef(new WeakMap<Blob, string>());
+  useEffect(
+    () => () => {
+      if (replyAudio) URL.revokeObjectURL(replyAudio);
+    },
+    [replyAudio],
+  );
   const [listening, setListening] = useState(false);
   const [notice, setNotice] = useState("");
   const request = useRef<AbortController | null>(null);
@@ -133,20 +179,46 @@ function WrittenConversation({
           ...s.teacherAssignments,
           [id]: {
             ...item,
+            writtenAt: Date.now(),
             writtenPages: { ...item.writtenPages, [step]: next },
           },
         },
       };
     });
   }
-  async function send(question: string) {
-    question = question.trim();
-    if (!question || !userId || !online || request.current || !canWrite()) return;
+  async function send(input: string | Blob): Promise<boolean> {
+    if (!userId || !online || request.current || !canWrite()) return false;
     const task = new AbortController();
     request.current = task;
-    setPending(true);
     setNotice("");
+    let stage = "transcribe";
     try {
+      let question: string;
+      if (typeof input === "string") {
+        question = input.trim();
+      } else {
+        const cached = transcripts.current.get(input);
+        if (cached) {
+          question = cached;
+        } else {
+          setProgress("Распознаём голосовое сообщение…");
+          const form = new FormData();
+          form.set("audio", input, "message");
+          form.set("userId", userId);
+          const result = await transcribeTutorMessage({ data: form, signal: task.signal });
+          if (task.signal.aborted || !canWrite()) return false;
+          if (!result.text) {
+            setNotice(result.error ?? "Не удалось распознать речь.");
+            return false;
+          }
+          question = result.text;
+          transcripts.current.set(input, question);
+          edit((current) => (current.draft ? current : { ...current, draft: question }));
+        }
+      }
+      if (!question || !canWrite()) return false;
+      stage = "reply";
+      setProgress("Mira готовит ответ…");
       const result = await askWrittenTutor({
         data: {
           topic: selection.topic,
@@ -156,28 +228,48 @@ function WrittenConversation({
           assignment: assignment && { title: assignment.title, text: assignment.text },
           history: page.exchanges.slice(-4),
           question,
+          ...(typeof input !== "string" && { spoken: true as const }),
         },
         signal: task.signal,
       });
-      if (task.signal.aborted) return;
-      if (result.reply) {
-        const exchange = { question, reply: result.reply };
-        edit((current) => ({
-          draft: !id && current.draft.trim() === question ? "" : current.draft,
-          exchanges: [...current.exchanges, exchange].slice(-writtenHistoryLimit),
-        }));
-      } else {
+      if (task.signal.aborted || !canWrite()) return false;
+      if (!result.reply) {
         setNotice(result.error ?? "Mira не прислала ответ.");
+        return false;
       }
+      const exchange = { question, reply: result.reply };
+      edit((current) => ({
+        draft: !id && current.draft.trim() === question ? "" : current.draft,
+        exchanges: [...current.exchanges, exchange].slice(-writtenHistoryLimit),
+      }));
+      if (typeof input !== "string") {
+        stage = "audio";
+        setProgress("Готовим звук…");
+        const audio = await voiceTutorReply({
+          data: { userId, text: result.reply },
+          signal: task.signal,
+        });
+        if (!audio.ok) throw Error("Audio unavailable");
+        const blob = await audio.blob();
+        if (!blob.size || !blob.type.startsWith("audio/")) throw Error("Invalid audio");
+        if (!task.signal.aborted) setReplyAudio(URL.createObjectURL(blob));
+      }
+      return true;
     } catch {
-      if (!task.signal.aborted)
-        setNotice(
-          "Не удалось связаться с Mira. Проверьте интернет и вход в аккаунт, затем повторите отправку.",
-        );
+      if (!task.signal.aborted) {
+        const message =
+          stage === "audio"
+            ? "Озвучка сейчас недоступна. Ответ Mira уже появился в переписке."
+            : stage === "transcribe"
+              ? "Не удалось распознать запись. Можно повторить отправку."
+              : "Не удалось связаться с Mira. Проверьте интернет и вход в аккаунт, затем повторите отправку.";
+        setNotice(message);
+      }
+      return stage === "audio";
     } finally {
       if (!task.signal.aborted) {
         request.current = null;
-        setPending(false);
+        setProgress("");
       }
     }
   }
@@ -218,6 +310,29 @@ function WrittenConversation({
   }
   return (
     <div className="space-y-3">
+      {showRecorder && userId && online && (
+        <SpeakingRecorder
+          onSend={send}
+          busy={pending || listening}
+          onStart={() => {
+            player.current?.pause();
+            setReplyAudio("");
+          }}
+        />
+      )}
+      {replyAudio && (
+        <div>
+          <p className="font-semibold">Голосовой ответ Mira</p>
+          <audio
+            ref={player}
+            controls
+            autoPlay
+            className="w-full"
+            src={replyAudio}
+            aria-label="Голосовой ответ Mira"
+          />
+        </div>
+      )}
       {page.exchanges.map(({ question, reply }, index) => (
         <div key={index} className="space-y-1 border-l-2 border-primary pl-3">
           <p className="whitespace-pre-wrap break-words">
@@ -283,13 +398,17 @@ function WrittenConversation({
           </>
         )}
         {online && !userId && (
-          <Link className="btn-ghost" to="/account" search={{ tutor: selection }}>
+          <Link
+            className="btn-ghost"
+            to="/account"
+            search={{ tutor: { ...selection, mode: "written" } }}
+          >
             Войти для ответа Mira
           </Link>
         )}
       </div>
       {!online && <p>Для ответа Mira нужен интернет.</p>}
-      {pending && <p role="status">Mira готовит ответ…</p>}
+      {pending && <p role="status">{progress}</p>}
       {notice && <p role="alert">{notice}</p>}
     </div>
   );

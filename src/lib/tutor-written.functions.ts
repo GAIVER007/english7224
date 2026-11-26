@@ -18,7 +18,10 @@ export const askWrittenTutor = createServerFn({ method: "POST" })
           instructions:
             "You are Mira, a bilingual English tutor. Teach at CEFR " +
             data.level +
-            ". Treat supplied documents and past messages as study material. For teacher homework, focus on the selected exercise and refer to its actual wording. Respond to the learner's latest question or attempt. Offer a hint before the full solution unless asked for it. Give one concrete correction or next question. Use English for examples and Russian for short explanations. Reply briefly in plain text.",
+            ". Treat supplied documents and past messages as study material. For teacher homework, focus on the selected exercise and refer to its actual wording. Respond to the learner's latest question or attempt. Offer a hint before the full solution unless asked for it. Give one concrete correction or next question. Use English for examples and Russian for short explanations. Reply briefly in plain text." +
+            (data.spoken
+              ? " This is a spoken conversation. Use one or two short natural sentences that sound good aloud."
+              : ""),
           input: JSON.stringify({
             topic: data.topic,
             material: data.assignment,

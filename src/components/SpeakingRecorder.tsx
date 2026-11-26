@@ -8,8 +8,11 @@ const MAX_RECORDING_BYTES = 12 * 1024 * 1024;
 type RecorderStatus = "idle" | "requesting" | "recording" | "processing" | "ready" | "error";
 
 interface SpeakingRecorderProps {
-  model: string;
+  model?: string;
   onRecorded?: (seconds: number) => void;
+  onSend?: (recording: Blob) => Promise<boolean>;
+  busy?: boolean;
+  onStart?: () => void;
 }
 
 function formatDuration(seconds: number) {
@@ -32,7 +35,13 @@ function permissionErrorMessage(error: unknown) {
   return "Не удалось включить микрофон. Проверьте разрешение браузера и попробуйте снова.";
 }
 
-export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
+export function SpeakingRecorder({
+  model,
+  onRecorded,
+  onSend,
+  busy,
+  onStart,
+}: SpeakingRecorderProps) {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [seconds, setSeconds] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -45,6 +54,7 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedAtRef = useRef(0);
   const audioUrlRef = useRef<string | null>(null);
+  const recording = useRef<Blob | null>(null);
   const onRecordedRef = useRef(onRecorded);
 
   const supported =
@@ -69,6 +79,7 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
   }, []);
 
   const revokeAudio = useCallback(() => {
+    recording.current = null;
     if (audioUrlRef.current) {
       URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = null;
@@ -107,6 +118,7 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
     requestRef.current = requestId;
     setStatus("requesting");
     setError(null);
+    onStart?.();
 
     let stream: MediaStream;
     try {
@@ -167,6 +179,7 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
       );
       const nextUrl = URL.createObjectURL(blob);
       revokeAudio();
+      recording.current = blob;
       audioUrlRef.current = nextUrl;
       setAudioUrl(nextUrl);
       setSeconds(duration);
@@ -250,9 +263,13 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
     <section className="mt-5 rounded-2xl border border-border bg-card p-4" aria-label="Моя запись">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="text-lg font-bold">Запишите свой ответ</h3>
+          <h3 className="text-lg font-bold">
+            {onSend ? "Голосовое сообщение для Mira" : "Запишите свой ответ"}
+          </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            До 2 минут. Аудио остаётся только на этом экране и не отправляется в интернет.
+            {onSend
+              ? "Запишите до двух минут и отправьте. Mira ответит голосом."
+              : "До 2 минут. Аудио остаётся только на этом экране и не отправляется в интернет."}
           </p>
         </div>
         {status === "recording" && (
@@ -267,8 +284,9 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
 
       {!supported ? (
         <p className="mt-4 rounded-xl bg-muted p-4 text-sm" role="status">
-          Запись звука недоступна в этом браузере. Произнесите ответ вслух и сравните его с образцом
-          ниже.
+          {onSend
+            ? "Запись звука недоступна в этом браузере. Можно написать Mira ниже."
+            : "Запись звука недоступна в этом браузере. Произнесите ответ вслух и сравните его с образцом ниже."}
         </p>
       ) : (
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -281,7 +299,7 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
               type="button"
               className="btn-primary min-h-12 w-full"
               onClick={startRecording}
-              disabled={status === "requesting" || status === "processing"}
+              disabled={busy || status === "requesting" || status === "processing"}
               aria-busy={status === "requesting" || status === "processing"}
             >
               {status === "ready" ? (
@@ -318,26 +336,51 @@ export function SpeakingRecorder({ model, onRecorded }: SpeakingRecorderProps) {
         <div className="mt-4">
           <p className="mb-2 text-sm font-semibold">Ваша попытка · {formatDuration(seconds)}</p>
           <audio className="w-full" controls src={audioUrl} aria-label="Воспроизвести мою запись" />
+          {onSend && (
+            <button
+              className="btn-primary mt-3"
+              disabled={busy || status !== "ready"}
+              onClick={async () => {
+                const current = recording.current;
+                if (
+                  current &&
+                  (await onSend(current)) &&
+                  mountedRef.current &&
+                  recording.current === current
+                ) {
+                  revokeAudio();
+                  setAudioUrl(null);
+                  setStatus("idle");
+                }
+              }}
+            >
+              Отправить запись Mira
+            </button>
+          )}
         </div>
       )}
 
-      <details className="mt-4 rounded-xl bg-muted px-4 py-3">
-        <summary className="min-h-11 cursor-pointer py-2 font-semibold">Как проверить себя</summary>
-        <div className="pb-1 text-sm">
-          <p className="font-semibold">Образец ответа</p>
-          <p className="mt-1 text-muted-foreground" lang="en">
-            {model}
-          </p>
-          <ul className="mt-3 list-disc space-y-1 pl-5 text-muted-foreground">
-            <li>Я передал основную мысль и ответил по теме.</li>
-            <li>Я проверил порядок слов, времена и ключевые выражения.</li>
-            <li>Речь звучит понятно, без слишком длинных пауз.</li>
-          </ul>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Это самостоятельное сравнение, а не автоматическая оценка произношения.
-          </p>
-        </div>
-      </details>
+      {model && (
+        <details className="mt-4 rounded-xl bg-muted px-4 py-3">
+          <summary className="min-h-11 cursor-pointer py-2 font-semibold">
+            Как проверить себя
+          </summary>
+          <div className="pb-1 text-sm">
+            <p className="font-semibold">Образец ответа</p>
+            <p className="mt-1 text-muted-foreground" lang="en">
+              {model}
+            </p>
+            <ul className="mt-3 list-disc space-y-1 pl-5 text-muted-foreground">
+              <li>Я передал основную мысль и ответил по теме.</li>
+              <li>Я проверил порядок слов, времена и ключевые выражения.</li>
+              <li>Речь звучит понятно, без слишком длинных пауз.</li>
+            </ul>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Это самостоятельное сравнение, а не автоматическая оценка произношения.
+            </p>
+          </div>
+        </details>
+      )}
     </section>
   );
 }

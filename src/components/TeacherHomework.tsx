@@ -108,12 +108,14 @@ function HomeworkDraft({
 export function TeacherHomework({
   selectedId,
   onSelect,
+  onResume,
   recentId,
   disabled,
 }: {
   selectedId: string;
   recentId: string | undefined;
   onSelect: (id: string) => void;
+  onResume: () => void;
   disabled: boolean;
 }) {
   const { state, update, ready } = useAppState();
@@ -160,7 +162,7 @@ export function TeacherHomework({
         </label>
       )}
       {!selectedId && !adding && recentId && recent && (
-        <button type="button" className="btn-ghost" onClick={() => onSelect(recentId)}>
+        <button type="button" className="btn-ghost" onClick={onResume}>
           Вернуться к заданию «{recent.title}»
         </button>
       )}

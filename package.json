@@ -107,6 +107,7 @@
     "vitest": "^4.1.10"
   },
   "patchedDependencies": {
-    "crossws@0.4.10": "patches/crossws@0.4.10.patch"
+    "crossws@0.4.10": "patches/crossws@0.4.10.patch",
+    "@lovable.dev/ai-gateway@0.1.11": "patches/ai-gateway-live-start.patch"
   }
 }

@@ -71,6 +71,18 @@ it("retries one refused upgrade and preserves a specific final refusal", async (
 it.each([
   [new AuthenticationError("no access", { httpStatus: 401 }), "ключ"],
   [new RateLimitError("busy", { httpStatus: 429, retryAfter: 7000 }), "через 7 с"],
+  [
+    new OperationFailedError("The Live gateway rejected session creation.", {
+      remote: { code: "insufficient_quota" },
+    }),
+    "квоту",
+  ],
+  [
+    new OperationFailedError("The Live gateway rejected session creation.", {
+      remote: { type: "server_error" },
+    }),
+    "голосовое сообщение",
+  ],
   [new OperationFailedError("creation outcome unknown", {}), "не смог начать звонок"],
 ] as const)("does not replay a blocked or ambiguous session", async (error, expected) => {
   vi.mocked(connectLive).mockRejectedValue(error);

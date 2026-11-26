@@ -23,6 +23,10 @@ vi.mock("@/integrations/supabase/client", () => ({
     },
   },
 }));
+vi.mock("@/lib/tutor-audio.functions", () => ({
+  transcribeTutorMessage: vi.fn(),
+  voiceTutorReply: vi.fn(),
+}));
 vi.mock("@/lib/tutor-written.functions", () => ({ askWrittenTutor: fixture.ask }));
 vi.mock("@/lib/cloud-sync", () => ({ ownsLocalProgress: () => true }));
 vi.mock("@/lib/tutor-call", () => ({
@@ -206,12 +210,19 @@ it("keeps drafts per exercise offline and keeps the learner's work if a written 
     expect(screen.queryByText(/С train нужно does/)).toBeNull();
     cleanup();
     render(<Page />);
-    const [id] = Object.keys(getAppState().teacherAssignments!);
-    fireEvent.change(screen.getByLabelText("Материал занятия"), { target: { value: id } });
-    fireEvent.click(screen.getByRole("button", { name: "Разобрать письменно" }));
+    fireEvent.click(screen.getByRole("button", { name: "Вернуться к заданию «At the station»" }));
     expect(draft()).toHaveValue("Where is the station?");
     fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
     expect(screen.getByText(/С train нужно does/)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Разобрать с Mira" }));
+    const sent = fixture.start.mock.lastCall?.[2];
+    expect(sent.workbook).toEqual({
+      position: 2,
+      openingWords: "2. When ___ the train leave?",
+      draft: "When do the train leave?",
+      lastExchange: { question: "When do the train leave?", reply: "С train нужно does." },
+    });
+    expect(JSON.stringify(sent.workbook)).not.toContain("Where is the station?");
   } finally {
     network.mockRestore();
   }

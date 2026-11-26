@@ -125,6 +125,26 @@ describe("SpeakingRecorder", () => {
     expect(onRecorded).toHaveBeenCalledOnce();
   });
 
+  it("keeps a voice message local until sent and allows a failed upload to be retried", async () => {
+    const { stream } = makeStream();
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: vi.fn().mockResolvedValue(stream) },
+    });
+    const send = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    render(<SpeakingRecorder onSend={send} />);
+    fireEvent.click(screen.getByRole("button", { name: "Начать запись" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Остановить запись" }));
+    const upload = await screen.findByRole("button", { name: "Отправить запись Mira" });
+    expect(send).not.toHaveBeenCalled();
+    await act(async () => fireEvent.click(upload));
+    expect(send).toHaveBeenCalledWith(expect.any(Blob));
+    expect(screen.getByLabelText("Воспроизвести мою запись")).toBeVisible();
+    await act(async () => fireEvent.click(upload));
+    expect(send.mock.calls[0]![0]).toBe(send.mock.calls[1]![0]);
+    expect(screen.queryByRole("button", { name: "Отправить запись Mira" })).toBeNull();
+  });
+
   it("automatically stops at two minutes", async () => {
     vi.useFakeTimers();
     const { stream, stop } = makeStream();

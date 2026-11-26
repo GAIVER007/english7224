@@ -1,0 +1,30 @@
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -985,6 +985,11 @@
+ 					if (event.type === "gateway.error") {
+ 						finish(new OperationFailedError("The Live gateway rejected session creation.", {
+ 							retryable: false,
++							remote: {
++								type: typeof event.error?.type === "string" ? event.error.type : void 0,
++								code: typeof event.error?.code === "string" ? event.error.code : void 0,
++								param: typeof event.error?.param === "string" ? event.error.param : void 0
++							},
+ 							ids: { runId }
+ 						}));
+ 						return;
+diff --git a/dist/index.cjs b/dist/index.cjs
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -986,6 +986,11 @@
+ 					if (event.type === "gateway.error") {
+ 						finish(new require_models.OperationFailedError("The Live gateway rejected session creation.", {
+ 							retryable: false,
++							remote: {
++								type: typeof event.error?.type === "string" ? event.error.type : void 0,
++								code: typeof event.error?.code === "string" ? event.error.code : void 0,
++								param: typeof event.error?.param === "string" ? event.error.param : void 0
++							},
+ 							ids: { runId }
+ 						}));
+ 						return;

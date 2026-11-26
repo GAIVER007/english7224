@@ -94,6 +94,7 @@
   },
   "patchedDependencies": {
     "crossws@0.4.10": "patches/crossws@0.4.10.patch",
+    "@lovable.dev/ai-gateway@0.1.11": "patches/ai-gateway-live-start.patch",
   },
   "overrides": {
     "rolldown": "1.2.1",

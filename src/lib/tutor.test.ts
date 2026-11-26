@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createBackup, parseBackup } from "./backup";
 import { createInitialState, validateAppStateForImport } from "./store";
 import { mergeAppStates } from "./sync-merge";
+import { assignmentForCall, recentHomework } from "./tutor-written";
 import { TutorCall } from "./tutor-call";
 import {
   assignmentTextLimit,
@@ -76,6 +77,33 @@ describe("tutor progress", () => {
         },
       }),
     ).toThrow("teacherAssignments");
+  });
+  it("restores earlier workbooks and follows the most recent unfinished lesson across modes", () => {
+    const sheet = {
+      title: "Travel",
+      text: "1. Train\n2. Bus",
+      done: false,
+      createdAt: 10,
+      writtenStep: 1,
+      writtenPages: { 1: { draft: "By bus", exchanges: [] } },
+    };
+    const call = { ...lesson, assignmentId: first, startedAt: 20, resumeFrom: "Ask for a ticket." };
+    expect(assignmentForCall(sheet).workbook).toMatchObject({ position: 2, draft: "By bus" });
+    expect(assignmentForCall(sheet, 20, call.resumeFrom)).toEqual({
+      title: sheet.title,
+      text: sheet.text,
+      resumeFrom: call.resumeFrom,
+    });
+    const homework = { [first]: sheet, [second]: { ...sheet, writtenAt: 30 } };
+    expect(recentHomework(homework, [[first, call]])?.id).toBe(second);
+    expect(
+      recentHomework({ ...homework, [second]: { ...homework[second], done: true } }, [
+        [first, call],
+      ]),
+    ).toMatchObject({ id: first, written: false });
+    expect(validateTutorSearch({ tutor: { ...call, mode: "written", draft: "private" } })).toEqual({
+      tutor: { assignmentId: first, topic: lesson.topic, level: lesson.level, mode: "written" },
+    });
   });
   it("carries the assignment ID through sign-in without its content", () => {
     const tutor = { topic: "Работа", level: "A2", assignmentId: first };

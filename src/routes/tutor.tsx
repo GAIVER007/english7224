@@ -5,7 +5,14 @@ import { TeacherHomework } from "@/components/TeacherHomework";
 import { WrittenTutor } from "@/components/WrittenTutor";
 import { useTutorCall } from "@/hooks/use-tutor-call";
 import { useAppState } from "@/lib/store";
-import { tutorLevels, tutorTopics, validateTutorSearch, type TutorSettings } from "@/lib/tutor";
+import {
+  tutorLevels,
+  tutorTopics,
+  validateTutorSearch,
+  type TutorDestination,
+  type TutorSettings,
+} from "@/lib/tutor";
+import { recentHomework } from "@/lib/tutor-written";
 
 export const Route = createFileRoute("/tutor")({
   validateSearch: validateTutorSearch,
@@ -21,8 +28,9 @@ function TutorPage() {
   const topic = selectedTopic ?? tutor?.topic ?? tutorTopics[0];
   const [selectedLevel, setLevel] = useState<TutorSettings["level"]>();
   const level = selectedLevel ?? tutor?.level ?? state.pathway?.selected ?? state.level ?? "A1";
-  const [chosenId, chooseAssignment] = useState<string>();
-  const assignmentId = chosenId ?? tutor?.assignmentId ?? "";
+  const [choice, setChoice] = useState<Pick<TutorDestination, "assignmentId" | "mode">>();
+  const destination = choice ?? tutor;
+  const assignmentId = destination?.assignmentId ?? "";
   const selection = { topic, level, ...(assignmentId ? { assignmentId } : {}) };
   const busy = call.phase !== "idle";
   const history = useMemo(
@@ -30,10 +38,7 @@ function TutorPage() {
       Object.entries(state.tutorLessons ?? {}).sort(([, a], [, b]) => b.startedAt - a.startedAt),
     [state.tutorLessons],
   );
-  const recentId = history.find(([, lesson]) => {
-    const assignment = lesson.assignmentId && state.teacherAssignments?.[lesson.assignmentId];
-    return assignment && !assignment.done && !lesson.partial;
-  })?.[1].assignmentId;
+  const recent = recentHomework(state.teacherAssignments, history);
   return (
     <main className="app-shell space-y-6">
       <Link to="/" className="inline-flex items-center gap-2">
@@ -54,8 +59,15 @@ function TutorPage() {
         </div>
         <TeacherHomework
           selectedId={assignmentId}
-          recentId={recentId}
-          onSelect={chooseAssignment}
+          recentId={recent?.id}
+          onSelect={(id) => setChoice({ assignmentId: id })}
+          onResume={() => {
+            if (recent)
+              setChoice({
+                assignmentId: recent.id,
+                ...(recent.written && { mode: "written" as const }),
+              });
+          }}
           disabled={busy}
         />
         <fieldset disabled={busy} className="flex flex-wrap gap-4">
@@ -148,6 +160,7 @@ function TutorPage() {
             userId={call.userId}
             online={call.online}
             callFailed={!!call.error}
+            resumeWritten={destination?.mode === "written"}
           />
         )}
       </section>

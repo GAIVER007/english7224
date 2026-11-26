@@ -5,6 +5,7 @@ import { getAppState, updateAppState } from "@/lib/store";
 import { ownsLocalProgress } from "@/lib/cloud-sync";
 import { TutorCall, type CallPhase } from "@/lib/tutor-call";
 import { tutorContinuation, type TutorSelection } from "@/lib/tutor";
+import { assignmentForCall } from "@/lib/tutor-written";
 
 function subscribeToNetwork(notify: () => void) {
   window.addEventListener("online", notify);
@@ -110,11 +111,7 @@ export function useTutorCall() {
         return data.session.access_token;
       },
       previous,
-      assignment && {
-        title: assignment.title,
-        text: assignment.text,
-        ...(checkpoint && { resumeFrom: checkpoint }),
-      },
+      assignment && assignmentForCall(assignment, last?.startedAt, checkpoint),
     );
   }
 
