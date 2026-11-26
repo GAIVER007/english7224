@@ -38,8 +38,7 @@ export class TutorCall {
     private callbacks: CallCallbacks,
   ) {}
 
-  async start(token: string, previous: string, assignment?: CallAssignment) {
-    this.timeout(45000, "Не удалось установить связь с Mira.");
+  async start(getToken: () => Promise<string>, previous: string, assignment?: CallAssignment) {
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof RTCPeerConnection === "undefined")
         throw Error("Для звонка нужен браузер с поддержкой микрофона и WebRTC.");
@@ -51,6 +50,7 @@ export class TutorCall {
         return;
       }
       this.mic = stream;
+      this.timeout(45000, "Не удалось установить связь с Mira.");
       const peer = new RTCPeerConnection();
       this.peer = peer;
       stream.getTracks().forEach((t) => peer.addTrack(t, stream));
@@ -84,6 +84,8 @@ export class TutorCall {
           peer.addEventListener("icegatheringstatechange", changed);
         });
       }
+      if (this.disposed) return;
+      const token = await getToken();
       if (this.disposed) return;
       const url = new URL(tutorPath, location.href);
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";

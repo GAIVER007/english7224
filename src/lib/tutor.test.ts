@@ -156,16 +156,22 @@ describe("tutor progress", () => {
     };
     try {
       const call = new TutorCall(lesson, document.createElement("audio"), callbacks);
-      const connecting = call.start("fixture", "");
+      vi.useFakeTimers();
+      const getToken = vi.fn(async () => "fixture");
+      const connecting = call.start(getToken, "");
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(callbacks.ended).not.toHaveBeenCalled();
       call.finish();
       allow({ getTracks: () => [{ stop }] } as unknown as MediaStream);
       await connecting;
       expect(stop).toHaveBeenCalledOnce();
+      expect(getToken).not.toHaveBeenCalled();
       expect(callbacks.save).not.toHaveBeenCalled();
       expect(callbacks.ended).toHaveBeenCalledOnce();
     } finally {
       if (original) Object.defineProperty(navigator, "mediaDevices", original);
       else Reflect.deleteProperty(navigator, "mediaDevices");
+      vi.useRealTimers();
       vi.unstubAllGlobals();
     }
   });

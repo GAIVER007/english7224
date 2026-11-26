@@ -15,9 +15,23 @@ export const assignmentMaterial = z.object({
 const resumeFrom = z.string().trim().max(320);
 const callAssignment = assignmentMaterial.extend({ resumeFrom: resumeFrom.optional() });
 export type CallAssignment = z.infer<typeof callAssignment>;
+export const writtenMessageLimit = 1600;
+export const writtenHistoryLimit = 8;
+export const writtenExchange = z.object({
+  question: z.string().min(1).max(writtenMessageLimit),
+  reply: z.string().min(1).max(3200),
+});
+export type WrittenExchange = z.infer<typeof writtenExchange>;
+export const writtenPage = z.object({
+  draft: z.string().max(writtenMessageLimit),
+  exchanges: z.array(writtenExchange).max(writtenHistoryLimit),
+});
+export type WrittenPage = z.infer<typeof writtenPage>;
 export const teacherAssignment = assignmentMaterial.extend({
   createdAt: z.number().int().nonnegative(),
   done: z.boolean(),
+  writtenStep: z.number().int().nonnegative().optional(),
+  writtenPages: z.record(z.string().regex(/^\d+$/), writtenPage).optional(),
 });
 export const assignmentLibrary = z.record(z.string().uuid(), teacherAssignment);
 export type TeacherAssignment = z.infer<typeof teacherAssignment>;

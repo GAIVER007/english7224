@@ -5,6 +5,7 @@ import {
   PaymentRequiredError,
   RateLimitError,
   connectLive,
+  generateResponse,
 } from "@lovable.dev/ai-gateway";
 import type { Message, Peer } from "crossws";
 import { tutorHooks } from "./tutor-relay.server";
@@ -12,6 +13,7 @@ import { tutorHooks } from "./tutor-relay.server";
 vi.mock("@lovable.dev/ai-gateway", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@lovable.dev/ai-gateway")>()),
   connectLive: vi.fn(),
+  generateResponse: vi.fn(),
 }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: "learner" } } }) } }),
@@ -47,6 +49,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
   vi.mocked(connectLive).mockReset();
+  vi.mocked(generateResponse).mockReset();
 });
 
 it("retries one refused upgrade and preserves a specific final refusal", async () => {
@@ -89,3 +92,37 @@ it("cancels the scheduled retry when the learner leaves", async () => {
   expect(connectLive).toHaveBeenCalledTimes(1);
   expect(send).not.toHaveBeenCalled();
 });
+
+it.each(["unavailable", "empty"])(
+  "continues speaking when the auxiliary coach is %s",
+  async (reason) => {
+    let delivered!: () => void;
+    const guidanceSent = new Promise<void>((resolve) => {
+      delivered = resolve;
+    });
+    const send = vi.fn(async () => delivered());
+    vi.mocked(connectLive).mockResolvedValue({
+      created: { session: { id: "voice-session" }, transport: { sdp: "answer" } },
+      send,
+      async *[Symbol.asyncIterator]() {
+        yield { type: "session.delegation.created", delegation: { id: "turn-1" } };
+        await guidanceSent;
+      },
+    } as unknown as Awaited<ReturnType<typeof connectLive>>);
+    if (reason === "empty") {
+      vi.mocked(generateResponse).mockResolvedValue({ output: [] } as unknown as Awaited<
+        ReturnType<typeof generateResponse>
+      >);
+    } else {
+      vi.mocked(generateResponse).mockRejectedValue(new OperationFailedError("unavailable"));
+    }
+    const { run, peer } = start();
+    await run;
+    expect(send).toHaveBeenCalledWith({
+      type: "session.instructions.append",
+      delegation_id: "turn-1",
+      content: expect.stringContaining("Continue the conversation"),
+    });
+    expect(peer.close).toHaveBeenCalledWith(1000);
+  },
+);

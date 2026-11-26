@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeft, AudioLines, Mic, MicOff, Phone, PhoneOff } from "lucide-react";
 import { TeacherHomework } from "@/components/TeacherHomework";
+import { WrittenTutor } from "@/components/WrittenTutor";
 import { useTutorCall } from "@/hooks/use-tutor-call";
 import { useAppState } from "@/lib/store";
 import { tutorLevels, tutorTopics, validateTutorSearch, type TutorSettings } from "@/lib/tutor";
@@ -139,6 +140,16 @@ function TutorPage() {
             </button>
           )}
         </div>
+        {ready && !busy && (!assignmentId || state.teacherAssignments?.[assignmentId]) && (
+          <WrittenTutor
+            key={JSON.stringify([call.userId, assignmentId, topic, level])}
+            selection={selection}
+            assignment={state.teacherAssignments?.[assignmentId]}
+            userId={call.userId}
+            online={call.online}
+            callFailed={!!call.error}
+          />
+        )}
       </section>
       <section className="space-y-3">
         <h2 className="text-xl font-bold">Мои занятия</h2>

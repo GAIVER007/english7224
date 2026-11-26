@@ -22,7 +22,7 @@ export function useTutorCall() {
     () => true,
   );
   const [phase, setPhase] = useState<CallPhase>("idle");
-  const [signedIn, setSignedIn] = useState(false);
+  const [userId, setUserId] = useState<string>();
   const [caption, setCaption] = useState("");
   const [error, setError] = useState("");
   const [muted, setMuted] = useState(false);
@@ -35,7 +35,7 @@ export function useTutorCall() {
       if (session.current?.user.id !== next?.user.id)
         call.current?.close("Аккаунт изменился.", false);
       session.current = next;
-      setSignedIn(!!next);
+      setUserId(next?.user.id);
     }).data.subscription;
     const close = () => call.current?.close("");
     window.addEventListener("pagehide", close);
@@ -103,7 +103,12 @@ export function useTutorCall() {
     });
     call.current = active;
     void active.start(
-      account.access_token,
+      async () => {
+        const { data, error } = await supabase.auth.getSession();
+        if (error || !data.session || data.session.user.id !== account.user.id)
+          throw Error("Войдите в аккаунт, чтобы начать звонок.");
+        return data.session.access_token;
+      },
       previous,
       assignment && {
         title: assignment.title,
@@ -116,7 +121,8 @@ export function useTutorCall() {
   return {
     audio,
     phase,
-    signedIn,
+    signedIn: !!userId,
+    userId,
     online,
     caption,
     error,

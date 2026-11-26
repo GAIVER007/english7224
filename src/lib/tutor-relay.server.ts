@@ -177,25 +177,34 @@ class TutorRelay {
     this.delegation?.abort();
     const task = new AbortController();
     this.delegation = task;
+    // The live tutor already has the exercise and lesson instructions.
+    const fallback = material
+      ? "Continue with the learner's selected exercise. Respond to their latest attempt, or ask the first unfinished question."
+      : "Continue the conversation at the learner's level. Respond to their latest turn and ask one short question.";
+    let guidance = fallback;
     try {
-      const text = await this.response(
-        prompt + " Give one short actionable coaching instruction for Mira's next spoken reply.",
-        JSON.stringify({
-          assignment: material,
-          transcript: this.transcript || "Begin the lesson.",
-        }),
-        task.signal,
-        id,
-      );
-      if (text && !task.signal.aborted)
-        await this.live!.send({
-          type: "session.instructions.append",
-          delegation_id: id,
-          content: text,
-        });
+      guidance =
+        (await this.response(
+          prompt + " Give one short actionable coaching instruction for Mira's next spoken reply.",
+          JSON.stringify({
+            assignment: material,
+            transcript: this.transcript || "Begin the lesson.",
+          }),
+          AbortSignal.any([task.signal, AbortSignal.timeout(6000)]),
+          id,
+        )) || fallback;
     } catch {
-      if (!task.signal.aborted)
-        this.fail("Mira не смогла подготовить ответ. Попробуйте позвонить ещё раз.");
+      // A slow or unavailable coaching model must not end an otherwise healthy call.
+    }
+    if (task.signal.aborted) return;
+    try {
+      await this.live!.send({
+        type: "session.instructions.append",
+        delegation_id: id,
+        content: guidance,
+      });
+    } catch {
+      if (!task.signal.aborted) this.fail("Связь с голосовым сервисом прервалась.");
     }
   }
 
