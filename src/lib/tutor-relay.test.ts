@@ -19,7 +19,7 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ auth: { getUser: async () => ({ data: { user: { id: "learner" } } }) } }),
 }));
 
-function start() {
+function start(assignment?: { title: string; text: string }) {
   const send = vi.fn();
   const peer = { send, close: vi.fn(), request: {} } as unknown as Peer;
   tutorHooks.open(peer);
@@ -32,6 +32,7 @@ function start() {
         sdp: "fixture",
         topic: "Работа",
         level: "A2",
+        assignment,
       }),
   } as Message;
   return { peer, send, run: tutorHooks.message(peer, message) };
@@ -103,6 +104,73 @@ it("cancels the scheduled retry when the learner leaves", async () => {
   await run;
   expect(connectLive).toHaveBeenCalledTimes(1);
   expect(send).not.toHaveBeenCalled();
+});
+
+it.each([
+  { code: "unsupported_voice" },
+  { type: "invalid_request_error", param: "session.audio.output.voice", code: "invalid_value" },
+])("opens the same lesson using the default voice after an explicit rejection", async (remote) => {
+  const failure = new OperationFailedError("The Live gateway rejected session creation.", {
+    remote,
+  });
+  vi.mocked(connectLive)
+    .mockRejectedValueOnce(failure)
+    .mockResolvedValueOnce({
+      created: { session: { id: "accepted" }, transport: { sdp: "accepted-answer" } },
+      async *[Symbol.asyncIterator]() {
+        yield { type: "session.closed", usage: { seconds: 0 } };
+      },
+    } as unknown as Awaited<ReturnType<typeof connectLive>>);
+  const { run, send } = start({ title: "At the station", text: "Ask for a ticket." });
+  await run;
+  const [first, next] = vi.mocked(connectLive).mock.calls;
+  expect(connectLive).toHaveBeenCalledTimes(2);
+  const { audio, ...session } = first![0].session;
+  expect(audio?.output?.voice).toBe("coral");
+  expect(next).toEqual([{ ...first![0], session }, first![1]]);
+  expect(send.mock.calls.map(([raw]) => JSON.parse(raw))).toContainEqual({
+    type: "answer",
+    sdp: "accepted-answer",
+  });
+});
+
+it.each([
+  [
+    { code: "insufficient_quota", type: "invalid_request_error", param: "voice" },
+    "insufficient_quota",
+  ],
+  [{ code: "invalid_value", param: "transport.sdp" }, "transport.sdp"],
+  [{ code: "provider_error", type: "server_error" }, "provider_error"],
+  [
+    { type: "invalid_request_error", code: "private_word", param: "private_word" },
+    "invalid_request_error",
+  ],
+] as const)(
+  "shows safe refusal details and does not replay unrelated failures",
+  async (remote, detail) => {
+    vi.mocked(connectLive).mockRejectedValue(
+      new OperationFailedError("The Live gateway rejected session creation.", { remote }),
+    );
+    const { run, send } = start();
+    await run;
+    const reply = JSON.parse(send.mock.calls[0]![0]);
+    expect(connectLive).toHaveBeenCalledTimes(1);
+    expect(reply.message).toContain(detail);
+    expect(reply.message).toContain("Код обращения operation_failed/");
+    expect(reply.message).not.toContain("private_word");
+  },
+);
+
+it("does not attempt a third session if the corrected request also fails", async () => {
+  vi.mocked(connectLive).mockRejectedValue(
+    new OperationFailedError("The Live gateway rejected session creation.", {
+      remote: { code: "invalid_voice" },
+    }),
+  );
+  const { run, send } = start();
+  await run;
+  expect(connectLive).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(send.mock.calls[0]![0]).message).toContain("invalid_voice");
 });
 
 it.each(["unavailable", "empty"])(

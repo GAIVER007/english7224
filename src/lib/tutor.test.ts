@@ -203,4 +203,89 @@ describe("tutor progress", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it.each(["timeout", "closed", "connected"] as const)(
+    "distinguishes an accepted answer from a working audio connection (%s)",
+    async (outcome) => {
+      const stop = vi.fn();
+      const channel = { readyState: "connecting", close: vi.fn(), onopen: () => {} };
+      const peer = {
+        addTrack: vi.fn(),
+        createDataChannel: () => channel,
+        createOffer: async () => ({ type: "offer", sdp: "offer" }),
+        setLocalDescription: vi.fn(),
+        setRemoteDescription: vi.fn(),
+        iceGatheringState: "complete",
+        connectionState: "connecting",
+        onconnectionstatechange: () => {},
+        close: vi.fn(),
+      };
+      const socket = {
+        onmessage: (_event: MessageEvent) => {},
+        onclose: (_event: CloseEvent) => {},
+        close: vi.fn(),
+      };
+      vi.useFakeTimers();
+      vi.stubGlobal("navigator", {
+        mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop }] }) },
+      });
+      vi.stubGlobal(
+        "RTCPeerConnection",
+        class {
+          constructor() {
+            return peer;
+          }
+        },
+      );
+      vi.stubGlobal(
+        "WebSocket",
+        class {
+          static OPEN = 1;
+          constructor() {
+            return socket;
+          }
+        },
+      );
+      const callbacks = {
+        phase: vi.fn(),
+        caption: vi.fn(),
+        playbackBlocked: vi.fn(),
+        ended: vi.fn(),
+        save: vi.fn(),
+      };
+      const call = new TutorCall(lesson, document.createElement("audio"), callbacks);
+      try {
+        await call.start(async () => "token", "");
+        socket.onmessage(
+          new MessageEvent("message", { data: JSON.stringify({ type: "answer", sdp: "answer" }) }),
+        );
+        await vi.advanceTimersByTimeAsync(0);
+        expect(callbacks.phase.mock.calls).toEqual([["connectingAudio"]]);
+        if (outcome === "connected") {
+          peer.connectionState = "connected";
+          peer.onconnectionstatechange();
+          expect(callbacks.phase).not.toHaveBeenCalledWith("active");
+          channel.readyState = "open";
+          channel.onopen();
+        } else if (outcome === "closed") {
+          socket.onclose(new CloseEvent("close", { code: 1000 }));
+        }
+        await vi.advanceTimersByTimeAsync(45000);
+        if (outcome === "connected") {
+          expect(callbacks.phase).toHaveBeenLastCalledWith("active");
+          expect(callbacks.ended).not.toHaveBeenCalled();
+        } else {
+          expect(callbacks.ended.mock.calls).toEqual([
+            [expect.stringContaining("подключить звук")],
+          ]);
+          expect(stop).toHaveBeenCalledOnce();
+          expect(callbacks.save).not.toHaveBeenCalled();
+        }
+      } finally {
+        call.close("");
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+      }
+    },
+  );
 });

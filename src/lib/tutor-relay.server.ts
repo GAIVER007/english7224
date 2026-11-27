@@ -7,6 +7,70 @@ import type { z } from "zod";
 type Start = Extract<z.infer<typeof clientCommand>, { type: "start" }>;
 type Session = Awaited<ReturnType<typeof connectLive>>;
 const calls = new WeakMap<Peer, TutorRelay>();
+const rejectedCreation = "The Live gateway rejected session creation.";
+const voiceParameters = new Set([
+  "voice",
+  "session.voice",
+  "audio.output.voice",
+  "session.audio.output.voice",
+]);
+const invalidVoice = new Set(["invalid_voice", "unsupported_voice", "voice_not_found"]);
+const invalidParameter = new Set([
+  "invalid_request_error",
+  "invalid_parameter",
+  "invalid_value",
+  "unsupported_parameter",
+  "unsupported_value",
+  "unknown_parameter",
+]);
+const diagnosticCodes = new Set([
+  ...invalidVoice,
+  ...invalidParameter,
+  "invalid_sdp",
+  "model_not_found",
+  "permission_denied",
+  "rate_limit_exceeded",
+  "rate_limited",
+  "insufficient_quota",
+  "payment_required",
+  "server_error",
+  "provider_error",
+]);
+const diagnosticParameters = new Set([
+  ...voiceParameters,
+  "model",
+  "session.model",
+  "session.audio",
+  "session.store",
+  "session.input",
+  "session.instructions",
+  "session.delegation",
+  "transport",
+  "transport.sdp",
+]);
+
+function rejectedVoiceChoice(error: GatewayError) {
+  if (error.code !== "operation_failed" || error.message !== rejectedCreation) return false;
+  const { code, type, param } = error.remote ?? {};
+  if (type && !invalidParameter.has(type) && !invalidVoice.has(type)) return false;
+  const reason = code ?? type;
+  return (
+    typeof reason === "string" &&
+    ((invalidVoice.has(reason) && (!param || voiceParameters.has(param))) ||
+      (invalidParameter.has(reason) && voiceParameters.has(param ?? "")))
+  );
+}
+
+function creationDetails(error?: GatewayError) {
+  if (error?.code !== "operation_failed" || error.message !== rejectedCreation) return "";
+  // Only known protocol identifiers belong on the learner's screen.
+  const { code, type, param } = error.remote ?? {};
+  const reason = [code, type].find(
+    (value) => typeof value === "string" && diagnosticCodes.has(value),
+  );
+  const details = [reason, param && diagnosticParameters.has(param) && param].filter(Boolean);
+  return details.length ? " Детали сервиса (" + details.join(", ") + ")." : "";
+}
 
 function instructions(settings: TutorSettings, withAssignment: boolean) {
   return `You are Mira, Yuri's warm and energetic bilingual English tutor. Speak first: greet Yuri, introduce the topic and ask one short question. Use CEFR ${settings.level}. ${
@@ -23,9 +87,16 @@ async function openTutorVoice(
   try {
     return await connectLive(payload, options);
   } catch (error) {
+    if (!(error instanceof GatewayError)) throw error;
+    if (payload.session.audio?.output?.voice && rejectedVoiceChoice(error)) {
+      // The gateway explicitly rejected this setting before creating a session.
+      // Keep the same SDP, model, privacy settings and lesson on the corrected request.
+      options.signal.throwIfAborted();
+      const { audio: _voiceChoice, ...session } = payload.session;
+      return connectLive({ ...payload, session }, options);
+    }
     // The SDK exposes an HTTP status for a refused upgrade, before sending session.start.
     if (
-      !(error instanceof GatewayError) ||
       ![429, 502, 503, 504].includes(error.httpStatus ?? 0) ||
       error.retryable === false ||
       (error.retryAfter ?? 0) > 3000
@@ -64,7 +135,7 @@ function startupMessage(error: unknown) {
     case "invalid_response":
       return "Сервис Mira вернул неполный ответ при подключении.";
     case "operation_failed":
-      if (error.message === "The Live gateway rejected session creation.") {
+      if (error.message === rejectedCreation) {
         const cause = [error.remote?.code, error.remote?.type];
         if (cause.includes("rate_limit_exceeded") || cause.includes("rate_limited"))
           return "Достигнут лимит запросов голосового сервиса. Попробуйте позже.";
@@ -72,6 +143,10 @@ function startupMessage(error: unknown) {
           return "Голосовой сервис отклонил звонок из-за лимита проекта. Проверьте квоту Lovable AI.";
         if (cause.includes("model_not_found") || cause.includes("permission_denied"))
           return "Голосовая модель недоступна этому проекту. Можно отправить голосовое сообщение ниже.";
+        if (error.remote?.param === "transport.sdp" || cause.includes("invalid_sdp"))
+          return "Голосовой сервис отклонил параметры аудиосоединения браузера (SDP). Можно записать голосовое сообщение ниже.";
+        if (rejectedVoiceChoice(error))
+          return "Голосовой сервис отклонил настройку голоса Mira. Можно записать голосовое сообщение ниже.";
         return "Сервис отклонил создание голосовой сессии. Можно записать голосовое сообщение ниже.";
       }
       return "Голосовой сервис не смог начать звонок.";
@@ -277,7 +352,9 @@ class TutorRelay {
         upstreamType: safeIdentifier(gateway?.remote?.type),
         parameter: safeIdentifier(gateway?.remote?.param),
       });
-      this.fail(startupMessage(error) + " Код обращения " + reference + ".");
+      this.fail(
+        startupMessage(error) + creationDetails(gateway) + " Код обращения " + reference + ".",
+      );
     });
     if (!live) return;
     this.live = live;

@@ -7,7 +7,9 @@ import {
   type TutorLesson,
 } from "./tutor";
 
-export type CallPhase = "idle" | "connecting" | "active" | "finishing";
+export type CallPhase = "idle" | "connecting" | "connectingAudio" | "active" | "finishing";
+const audioConnectionError =
+  "Mira ответила, но браузеру не удалось подключить звук. Можно продолжить голосовыми сообщениями.";
 interface CallCallbacks {
   phase: (phase: CallPhase) => void;
   caption: (text: string) => void;
@@ -50,7 +52,7 @@ export class TutorCall {
         return;
       }
       this.mic = stream;
-      this.timeout(45000, "Не удалось установить связь с Mira.");
+      this.timeout(45000, () => this.startupError());
       const peer = new RTCPeerConnection();
       this.peer = peer;
       stream.getTracks().forEach((t) => peer.addTrack(t, stream));
@@ -106,7 +108,11 @@ export class TutorCall {
         void this.receive(e.data).catch(() => this.close("Не удалось обработать ответ Mira."));
       };
       socket.onerror = () => this.close("Нет связи с сервером Mira.");
-      socket.onclose = (e) => this.close(e.code === 1000 ? "" : "Связь с Mira прервалась.");
+      socket.onclose = (e) => {
+        if (this.phase === "connecting" || this.phase === "connectingAudio")
+          this.close(this.startupError());
+        else this.close(e.code === 1000 ? "" : "Связь с Mira прервалась.");
+      };
     } catch (error) {
       const denied = error instanceof DOMException && error.name === "NotAllowedError";
       this.close(
@@ -128,6 +134,10 @@ export class TutorCall {
           // SDP is line-based. Some gateways omit the final CRLF that browsers require.
           const sdp = event.sdp.trimEnd().replace(/\r\n?|\n/g, "\r\n") + "\r\n";
           await this.peer!.setRemoteDescription({ type: "answer", sdp });
+          if (!this.disposed && this.phase === "connecting") {
+            this.phase = "connectingAudio";
+            this.callbacks.phase(this.phase);
+          }
         } catch {
           this.close(
             "Браузеру не удалось согласовать звук с Mira. Попробуйте начать звонок ещё раз.",
@@ -160,7 +170,7 @@ export class TutorCall {
   private connected() {
     if (
       this.disposed ||
-      this.phase !== "connecting" ||
+      (this.phase !== "connecting" && this.phase !== "connectingAudio") ||
       this.peer?.connectionState !== "connected" ||
       this.channel?.readyState !== "open"
     )
@@ -179,14 +189,22 @@ export class TutorCall {
     }, 10000);
   }
 
-  private timeout(ms: number, message: string) {
+  private startupError() {
+    return this.phase === "connectingAudio"
+      ? audioConnectionError
+      : "Не удалось установить связь с Mira.";
+  }
+
+  private timeout(ms: number, message: () => string) {
     clearTimeout(this.deadline);
-    this.deadline = setTimeout(() => this.close(message), ms);
+    this.deadline = setTimeout(() => this.close(message()), ms);
   }
 
   private mediaLost() {
     if (!this.disposed && this.phase !== "finishing")
-      this.close("Голосовое соединение прервалось.");
+      this.close(
+        this.phase === "active" ? "Голосовое соединение прервалось." : this.startupError(),
+      );
   }
 
   async play() {
@@ -217,7 +235,7 @@ export class TutorCall {
     this.callbacks.phase("finishing");
     clearInterval(this.pulse);
     this.mic?.getTracks().forEach((t) => t.stop());
-    this.timeout(40000, "Не удалось получить итог занятия.");
+    this.timeout(40000, () => "Не удалось получить итог занятия.");
     if (this.socket?.readyState === WebSocket.OPEN)
       this.socket.send(JSON.stringify({ type: "finish" }));
     else this.close("Нет связи с сервером Mira.");

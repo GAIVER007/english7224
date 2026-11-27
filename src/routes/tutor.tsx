@@ -105,6 +105,7 @@ function TutorPage() {
               {
                 idle: "",
                 connecting: "Подключаем микрофон и звоним Mira…",
+                connectingAudio: "Mira ответила. Подключаем звук…",
                 active: "Звонок идёт",
                 finishing: "Готовим итог занятия…",
               }[call.phase]
@@ -148,7 +149,7 @@ function TutorPage() {
           {busy && call.phase !== "finishing" && (
             <button className="btn-primary" onClick={call.finish}>
               <PhoneOff size={17} />
-              {call.phase === "connecting" ? "Отменить" : "Завершить звонок"}
+              {call.phase === "active" ? "Завершить звонок" : "Отменить"}
             </button>
           )}
         </div>
