@@ -5,7 +5,7 @@ import { getAppState, updateAppState } from "@/lib/store";
 import { ownsLocalProgress } from "@/lib/cloud-sync";
 import { TutorCall, type CallPhase } from "@/lib/tutor-call";
 import { tutorContinuation, type TutorSelection } from "@/lib/tutor";
-import { assignmentForCall } from "@/lib/tutor-written";
+import { assignmentForCall, worksheet, type LessonOpening } from "@/lib/tutor-written";
 
 function subscribeToNetwork(notify: () => void) {
   window.addEventListener("online", notify);
@@ -31,10 +31,28 @@ export function useTutorCall() {
   const audio = useRef<HTMLAudioElement>(null);
   const call = useRef<TutorCall | null>(null);
   const session = useRef<Session | null>(null);
+  const [messageLesson, setMessageLesson] = useState<{
+    selection: TutorSelection;
+    userId: string;
+    step: number;
+    opening: LessonOpening;
+  }>();
+  const openingClaimed = useRef(false);
+  function matchesLesson(selection: TutorSelection) {
+    return (
+      !!messageLesson &&
+      messageLesson.userId === userId &&
+      messageLesson.selection.assignmentId === selection.assignmentId &&
+      messageLesson.selection.topic === selection.topic &&
+      messageLesson.selection.level === selection.level
+    );
+  }
   useEffect(() => {
     const subscription = supabase.auth.onAuthStateChange((_, next) => {
-      if (session.current?.user.id !== next?.user.id)
+      if (session.current?.user.id !== next?.user.id) {
+        setMessageLesson(undefined);
         call.current?.close("Аккаунт изменился.", false);
+      }
       session.current = next;
       setUserId(next?.user.id);
     }).data.subscription;
@@ -48,6 +66,7 @@ export function useTutorCall() {
   }, []);
 
   function start({ assignmentId, ...settings }: TutorSelection) {
+    setMessageLesson(undefined);
     if (!navigator.onLine) {
       setError("Для звонка нужен интернет.");
       return;
@@ -65,6 +84,7 @@ export function useTutorCall() {
       return;
     }
     const { last, checkpoint } = tutorContinuation(state.tutorLessons, assignmentId);
+    const material = assignment && assignmentForCall(assignment, last?.startedAt, checkpoint);
     const previous = last
       ? [
           last.summary,
@@ -83,6 +103,21 @@ export function useTutorCall() {
       phase: setPhase,
       caption: setCaption,
       playbackBlocked: setBlocked,
+      startMessages() {
+        const step = assignment
+          ? Math.min(assignment.writtenStep ?? 0, worksheet(assignment.text).exercises.length - 1)
+          : 0;
+        openingClaimed.current = false;
+        setMessageLesson({
+          selection: { ...settings, assignmentId },
+          userId: account.user.id,
+          step,
+          opening: {
+            resumeFrom: material?.resumeFrom,
+            draft: assignment?.writtenPages?.[step]?.draft,
+          },
+        });
+      },
       ended(message) {
         call.current = null;
         setPhase("idle");
@@ -111,7 +146,7 @@ export function useTutorCall() {
         return data.session.access_token;
       },
       previous,
-      assignment && assignmentForCall(assignment, last?.startedAt, checkpoint),
+      material,
     );
   }
 
@@ -123,6 +158,20 @@ export function useTutorCall() {
     online,
     caption,
     error,
+    hasMessageLesson: !!messageLesson,
+    matchesLesson,
+    takeOpening(selection: TutorSelection, step: number) {
+      if (
+        !messageLesson ||
+        openingClaimed.current ||
+        !matchesLesson(selection) ||
+        step !== messageLesson.step ||
+        session.current?.user.id !== messageLesson.userId
+      )
+        return;
+      openingClaimed.current = true;
+      return messageLesson.opening;
+    },
     muted,
     blocked,
     start,

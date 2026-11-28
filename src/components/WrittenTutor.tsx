@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { MessageCircle, Mic, Volume2 } from "lucide-react";
 import { SpeakingRecorder } from "./SpeakingRecorder";
@@ -17,7 +17,7 @@ import {
   type TutorSelection,
   type WrittenPage,
 } from "@/lib/tutor";
-import { worksheet } from "@/lib/tutor-written";
+import { worksheet, type LessonOpening, type TakeLessonOpening } from "@/lib/tutor-written";
 import { askWrittenTutor } from "@/lib/tutor-written.functions";
 
 type Props = {
@@ -25,6 +25,7 @@ type Props = {
   assignment: TeacherAssignment | undefined;
   userId: string | undefined;
   online: boolean;
+  takeOpening: TakeLessonOpening;
 };
 const emptyPage: WrittenPage = { draft: "", exchanges: [] };
 
@@ -127,6 +128,7 @@ function WrittenConversation({
   online,
   step,
   showRecorder,
+  takeOpening,
 }: Props & { step: number; showRecorder: boolean }) {
   const { update, storageError } = useAppState();
   const [topicPage, setTopicPage] = useState(emptyPage);
@@ -143,6 +145,7 @@ function WrittenConversation({
   );
   const [listening, setListening] = useState(false);
   const [notice, setNotice] = useState("");
+  const [retryOpening, setRetryOpening] = useState<LessonOpening>();
   const request = useRef<AbortController | null>(null);
   const mic = useRef<SpeechRecognitionLike | null>(null);
   useEffect(
@@ -186,8 +189,9 @@ function WrittenConversation({
       };
     });
   }
-  async function send(input: string | Blob): Promise<boolean> {
+  async function send(input: string | Blob, opening?: LessonOpening): Promise<boolean> {
     if (!userId || !online || request.current || !canWrite()) return false;
+    const spoken = !!opening || typeof input !== "string";
     const task = new AbortController();
     request.current = task;
     setNotice("");
@@ -228,7 +232,8 @@ function WrittenConversation({
           assignment: assignment && { title: assignment.title, text: assignment.text },
           history: page.exchanges.slice(-4),
           question,
-          ...(typeof input !== "string" && { spoken: true as const }),
+          ...(spoken && { spoken: true as const }),
+          ...(opening && { opening }),
         },
         signal: task.signal,
       });
@@ -237,12 +242,17 @@ function WrittenConversation({
         setNotice(result.error ?? "Mira не прислала ответ.");
         return false;
       }
-      const exchange = { question, reply: result.reply };
+      setRetryOpening(undefined);
+      const exchange = {
+        question,
+        reply: result.reply,
+        ...(opening && { lessonStart: true as const }),
+      };
       edit((current) => ({
         draft: !id && current.draft.trim() === question ? "" : current.draft,
         exchanges: [...current.exchanges, exchange].slice(-writtenHistoryLimit),
       }));
-      if (typeof input !== "string") {
+      if (spoken) {
         stage = "audio";
         setProgress("Готовим звук…");
         const audio = await voiceTutorReply({
@@ -273,6 +283,21 @@ function WrittenConversation({
       }
     }
   }
+  function beginLesson(opening: LessonOpening) {
+    setRetryOpening(opening);
+    void send(id ? "Разобрать с Mira" : "Начать звонок", opening);
+  }
+  const beginAfterRefusal = useEffectEvent(() => {
+    const opening = takeOpening(selection, step);
+    if (opening && online && userId) beginLesson(opening);
+  });
+  useEffect(() => {
+    if (!showRecorder) return;
+    // Only the mounted workbook may claim the user's call attempt.
+    const timer = setTimeout(beginAfterRefusal, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- useEffectEvent reads current props without resubscribing.
+  }, [showRecorder]);
   const Recognition = getSpeechRecognitionConstructor();
   function dictate() {
     if (!Recognition || mic.current) return;
@@ -310,16 +335,6 @@ function WrittenConversation({
   }
   return (
     <div className="space-y-3">
-      {showRecorder && userId && online && (
-        <SpeakingRecorder
-          onSend={send}
-          busy={pending || listening}
-          onStart={() => {
-            player.current?.pause();
-            setReplyAudio("");
-          }}
-        />
-      )}
       {replyAudio && (
         <div>
           <p className="font-semibold">Голосовой ответ Mira</p>
@@ -333,11 +348,13 @@ function WrittenConversation({
           />
         </div>
       )}
-      {page.exchanges.map(({ question, reply }, index) => (
+      {page.exchanges.map(({ question, reply, lessonStart }, index) => (
         <div key={index} className="space-y-1 border-l-2 border-primary pl-3">
-          <p className="whitespace-pre-wrap break-words">
-            <strong>Вы</strong> · {question}
-          </p>
+          {!lessonStart && (
+            <p className="whitespace-pre-wrap break-words">
+              <strong>Вы</strong> · {question}
+            </p>
+          )}
           <p className="whitespace-pre-wrap break-words">
             <strong>Mira</strong> · {reply}
           </p>
@@ -351,6 +368,21 @@ function WrittenConversation({
           )}
         </div>
       ))}
+      {retryOpening && !pending && online && userId && (
+        <button className="btn-ghost" onClick={() => beginLesson(retryOpening)}>
+          Повторить первый вопрос Mira
+        </button>
+      )}
+      {showRecorder && userId && online && (
+        <SpeakingRecorder
+          onSend={send}
+          busy={pending || listening}
+          onStart={() => {
+            player.current?.pause();
+            setReplyAudio("");
+          }}
+        />
+      )}
       <label className="block font-medium">
         {id ? "Ваш ответ или вопрос по упражнению" : "Сообщение для Mira"}
         <textarea

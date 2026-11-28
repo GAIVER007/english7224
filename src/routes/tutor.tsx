@@ -33,6 +33,8 @@ function TutorPage() {
   const assignmentId = destination?.assignmentId ?? "";
   const selection = { topic, level, ...(assignmentId ? { assignmentId } : {}) };
   const busy = call.phase !== "idle";
+  const inMessageLesson = call.matchesLesson(selection);
+  const callError = !call.hasMessageLesson || inMessageLesson ? call.error : "";
   const history = useMemo(
     () =>
       Object.entries(state.tutorLessons ?? {}).sort(([, a], [, b]) => b.startedAt - a.startedAt),
@@ -113,7 +115,18 @@ function TutorPage() {
           </p>
         )}
         {busy && call.caption && <p className="rounded-xl bg-muted p-4">{call.caption}</p>}
-        {call.error && <p role="alert">{call.error}</p>}
+        {callError &&
+          (inMessageLesson ? (
+            <div className="space-y-1">
+              <p role="status">Звонок недоступен. Продолжаем голосовыми сообщениями.</p>
+              <details className="text-sm text-muted-foreground">
+                <summary>Почему не начался звонок</summary>
+                <p>{callError}</p>
+              </details>
+            </div>
+          ) : (
+            <p role="alert">{callError}</p>
+          ))}
         <div className="flex flex-wrap gap-3">
           {!busy && !call.online && (
             <p role="status">
@@ -160,7 +173,8 @@ function TutorPage() {
             assignment={state.teacherAssignments?.[assignmentId]}
             userId={call.userId}
             online={call.online}
-            callFailed={!!call.error}
+            callFailed={!!callError}
+            takeOpening={call.takeOpening}
             resumeWritten={destination?.mode === "written"}
           />
         )}

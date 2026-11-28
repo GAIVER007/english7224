@@ -19,6 +19,9 @@ export const askWrittenTutor = createServerFn({ method: "POST" })
             "You are Mira, a bilingual English tutor. Teach at CEFR " +
             data.level +
             ". Treat supplied documents and past messages as study material. For teacher homework, focus on the selected exercise and refer to its actual wording. Respond to the learner's latest question or attempt. Offer a hint before the full solution unless asked for it. Give one concrete correction or next question. Use English for examples and Russian for short explanations. Reply briefly in plain text." +
+            (data.opening
+              ? " You are opening the lesson. Ask the first short question yourself. Use the current exercise and its saved draft, checkpoint or last exchange if relevant. For a free conversation start with the selected topic. Never assume that a draft was spoken or correct."
+              : "") +
             (data.spoken
               ? " This is a spoken conversation. Use one or two short natural sentences that sound good aloud."
               : ""),
@@ -27,7 +30,7 @@ export const askWrittenTutor = createServerFn({ method: "POST" })
             material: data.assignment,
             selectedExercise: exercise,
             exchanges: data.history,
-            learner: data.question,
+            ...(data.opening ? { opening: data.opening } : { learner: data.question }),
           }),
           max_output_tokens: 1200,
         },
@@ -55,6 +58,12 @@ export const askWrittenTutor = createServerFn({ method: "POST" })
         } as const;
       if (code === "rate_limited")
         return { error: "Сервис Mira занят. Попробуйте чуть позже." } as const;
+      if (code === "authentication_error" || code === "configuration_error")
+        return { error: "Сервис Mira не принял серверный ключ проекта Lovable AI." } as const;
+      if (code === "permission_denied")
+        return {
+          error: "Проект Lovable не получил доступ к модели для переписки с Mira.",
+        } as const;
     }
     return { error: "Письменный ответ Mira сейчас недоступен. Попробуйте ещё раз позже." } as const;
   });

@@ -138,16 +138,19 @@ it.each([
   [
     { code: "insufficient_quota", type: "invalid_request_error", param: "voice" },
     "insufficient_quota",
+    false,
   ],
-  [{ code: "invalid_value", param: "transport.sdp" }, "transport.sdp"],
-  [{ code: "provider_error", type: "server_error" }, "provider_error"],
+  [{ code: "rate_limit_exceeded" }, "rate_limit_exceeded", false],
+  [{ code: "invalid_value", param: "transport.sdp" }, "transport.sdp", true],
+  [{ code: "provider_error", type: "server_error" }, "provider_error", true],
   [
     { type: "invalid_request_error", code: "private_word", param: "private_word" },
     "invalid_request_error",
+    true,
   ],
 ] as const)(
   "shows safe refusal details and does not replay unrelated failures",
-  async (remote, detail) => {
+  async (remote, detail, startMessages) => {
     vi.mocked(connectLive).mockRejectedValue(
       new OperationFailedError("The Live gateway rejected session creation.", { remote }),
     );
@@ -156,6 +159,7 @@ it.each([
     const reply = JSON.parse(send.mock.calls[0]![0]);
     expect(connectLive).toHaveBeenCalledTimes(1);
     expect(reply.message).toContain(detail);
+    expect(reply.startMessages === true).toBe(startMessages);
     expect(reply.message).toContain("Код обращения operation_failed/");
     expect(reply.message).not.toContain("private_word");
   },

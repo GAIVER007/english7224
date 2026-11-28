@@ -18,6 +18,7 @@ export const writtenHistoryLimit = 8;
 export const writtenExchange = z.object({
   question: z.string().min(1).max(writtenMessageLimit),
   reply: z.string().min(1).max(3200),
+  lessonStart: z.literal(true).optional(),
 });
 export type WrittenExchange = z.infer<typeof writtenExchange>;
 const callAssignment = assignmentMaterial.extend({
@@ -120,6 +121,10 @@ export const relayEvent = z.discriminatedUnion("type", [
   z.object({ type: z.literal("caption"), who: z.enum(["Юрий", "Mira"]), delta: z.string() }),
   z.object({ type: z.literal("usage"), seconds: z.number().nonnegative() }),
   lessonNotes.extend({ type: z.literal("notes") }),
-  z.object({ type: z.literal("error"), message: z.string() }),
+  z.object({
+    type: z.literal("error"),
+    message: z.string(),
+    startMessages: z.literal(true).optional(),
+  }),
 ]);
 export type RelayEvent = z.infer<typeof relayEvent>;

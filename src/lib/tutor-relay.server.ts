@@ -173,9 +173,9 @@ class TutorRelay {
     if (!this.controller.signal.aborted) this.peer.send(JSON.stringify(event));
   }
 
-  fail(message: string) {
+  fail(message: string, startMessages = false) {
     if (this.controller.signal.aborted) return;
-    this.emit({ type: "error", message });
+    this.emit({ type: "error", message, ...(startMessages && { startMessages: true as const }) });
     this.peer.close(1011);
     this.stop();
   }
@@ -357,6 +357,14 @@ class TutorRelay {
       });
       this.fail(
         startupMessage(error) + creationDetails(gateway) + " Код обращения " + reference + ".",
+        code === "operation_failed" &&
+          ![gateway?.remote?.code, gateway?.remote?.type].some(
+            (cause) =>
+              cause === "insufficient_quota" ||
+              cause === "payment_required" ||
+              cause === "rate_limit_exceeded" ||
+              cause === "rate_limited",
+          ),
       );
     });
     if (!live) return;

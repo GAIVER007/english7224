@@ -14,6 +14,7 @@ interface CallCallbacks {
   phase: (phase: CallPhase) => void;
   caption: (text: string) => void;
   playbackBlocked: (blocked: boolean) => void;
+  startMessages?: () => void;
   ended: (message: string) => void;
   save: (id: string, record: TutorLesson) => void;
 }
@@ -162,6 +163,7 @@ export class TutorCall {
         };
         break;
       case "error":
+        if (event.startMessages && this.phase === "connecting") this.callbacks.startMessages?.();
         this.close(event.message);
         break;
     }

@@ -8,11 +8,23 @@ import {
   type CallAssignment,
   type TeacherAssignment,
   type TutorLesson,
+  type TutorSelection,
 } from "./tutor";
+
+const lessonOpening = z.object({
+  resumeFrom: z.string().max(320).optional(),
+  draft: z.string().max(writtenMessageLimit).optional(),
+});
+export type LessonOpening = z.infer<typeof lessonOpening>;
+export type TakeLessonOpening = (
+  selection: TutorSelection,
+  step: number,
+) => LessonOpening | undefined;
 
 export const writtenRequest = tutorSettings.extend({
   userId: z.string().uuid(),
   spoken: z.literal(true).optional(),
+  opening: lessonOpening.optional(),
   assignment: assignmentMaterial.optional(),
   step: z.number().int().nonnegative(),
   history: z.array(writtenExchange).max(4),

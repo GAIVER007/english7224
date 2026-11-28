@@ -1,11 +1,12 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { ComponentType, ReactNode } from "react";
+import { StrictMode, type ComponentType, type ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { Session } from "@supabase/supabase-js";
 import { getAppState, resetAppState } from "@/lib/store";
 
 const fixture = vi.hoisted(() => ({
   ask: vi.fn(),
+  voice: vi.fn(),
   start: vi.fn(),
   mute: vi.fn(),
   finish: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("@/lib/tutor-audio.functions", () => ({
   transcribeTutorMessage: vi.fn(),
-  voiceTutorReply: vi.fn(),
+  voiceTutorReply: fixture.voice,
 }));
 vi.mock("@/lib/tutor-written.functions", () => ({ askWrittenTutor: fixture.ask }));
 vi.mock("@/lib/cloud-sync", () => ({ ownsLocalProgress: () => true }));
@@ -38,6 +39,7 @@ vi.mock("@/lib/tutor-call", () => ({
         phase: (value: string) => void;
         caption: (text: string) => void;
         save: (id: string, record: unknown) => void;
+        startMessages: () => void;
         ended: (msg: string) => void;
       },
     ) {}
@@ -48,7 +50,11 @@ vi.mock("@/lib/tutor-call", () => ({
       assignment?: { title: string; text: string },
     ) {
       this.assignment = assignment;
-      fixture.start(token, previous, assignment);
+      if (fixture.start(token, previous, assignment) === "refused") {
+        this.callbacks.startMessages();
+        this.callbacks.ended("Код обращения operation_failed/test.");
+        return;
+      }
       this.callbacks.phase("active");
       this.callbacks.caption("Mira: Hi, Yuri!");
     }
@@ -226,4 +232,58 @@ it("keeps drafts per exercise offline and keeps the learner's work if a written 
   } finally {
     network.mockRestore();
   }
+});
+
+it("opens the selected exercise once after a Live refusal and preserves the draft through reply and audio failures", async () => {
+  render(
+    <StrictMode>
+      <Page />
+    </StrictMode>,
+  );
+  fireEvent.click(await screen.findByRole("button", { name: "Добавить задание" }));
+  fireEvent.change(screen.getByLabelText("Название задания"), {
+    target: { value: "At the station" },
+  });
+  fireEvent.change(screen.getByLabelText("Текст для разбора"), {
+    target: { value: "1. Ask for a ticket.\n2. Ask for the time." },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить задание" }));
+  fireEvent.click(screen.getByRole("button", { name: "Разобрать письменно" }));
+  fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
+  fireEvent.change(screen.getByLabelText("Ваш ответ или вопрос по упражнению"), {
+    target: { value: "When is the train?" },
+  });
+  fixture.start.mockReturnValueOnce("refused");
+  fixture.ask.mockResolvedValueOnce({ error: "Сервис Mira занят." });
+  fireEvent.click(screen.getByRole("button", { name: "Разобрать с Mira" }));
+  expect(await screen.findByText("Сервис Mira занят.")).toBeVisible();
+  expect(fixture.ask).toHaveBeenCalledTimes(1);
+  expect(fixture.ask.mock.calls[0]![0].data).toMatchObject({
+    opening: { draft: "When is the train?" },
+    spoken: true,
+    step: 1,
+    assignment: { title: "At the station" },
+  });
+  expect(fixture.voice).not.toHaveBeenCalled();
+  fixture.ask.mockResolvedValueOnce({ reply: "What time does your train leave?" });
+  fixture.voice.mockRejectedValueOnce(Error("Speech unavailable"));
+  fireEvent.click(screen.getByRole("button", { name: "Повторить первый вопрос Mira" }));
+  expect(await screen.findByText(/Озвучка сейчас недоступна/)).toBeVisible();
+  expect(screen.getByText(/What time does your train leave/)).toBeVisible();
+  expect(screen.getByLabelText("Ваш ответ или вопрос по упражнению")).toHaveValue(
+    "When is the train?",
+  );
+  expect(screen.queryByRole("button", { name: "Повторить первый вопрос Mira" })).toBeNull();
+  expect(fixture.start).toHaveBeenCalledTimes(1);
+  const assignment = Object.values(getAppState().teacherAssignments!)[0]!;
+  expect(assignment.writtenPages?.[1]?.exchanges).toEqual([
+    { lessonStart: true, question: "Разобрать с Mira", reply: "What time does your train leave?" },
+  ]);
+  fireEvent.click(screen.getByRole("button", { name: "Назад" }));
+  fireEvent.click(screen.getByRole("button", { name: "Дальше" }));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  });
+  expect(fixture.ask).toHaveBeenCalledTimes(2);
+  expect(fixture.voice).toHaveBeenCalledOnce();
 });
