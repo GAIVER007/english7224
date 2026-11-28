@@ -164,6 +164,8 @@ class TutorRelay {
   private transcript = "";
   private lastSpeaker = "";
   private readonly runId = crypto.randomUUID();
+  private readonly coachingEventPrefix = this.runId + "-coach-";
+  private coachingCommandCount = 0;
 
   constructor(private peer: Peer) {}
 
@@ -291,6 +293,7 @@ class TutorRelay {
     try {
       await this.live!.send({
         type: "session.instructions.append",
+        event_id: this.coachingEventPrefix + ++this.coachingCommandCount,
         delegation_id: id,
         content: guidance,
       });
@@ -360,6 +363,12 @@ class TutorRelay {
     this.live = live;
     this.emit({ type: "answer", sdp: live.created.transport.sdp });
     for await (const event of live) {
+      if (event.type === "error" && event.error?.type === "invalid_request_error") {
+        // A rejected optional instruction can arrive after the tutor has moved on.
+        const commandId = event.client_event_id ?? event.error.client_event_id;
+        if (typeof commandId === "string" && commandId.startsWith(this.coachingEventPrefix))
+          continue;
+      }
       switch (event.type) {
         case "session.input_transcript.delta":
         case "session.output_transcript.delta": {
@@ -382,11 +391,11 @@ class TutorRelay {
         case "session.closed":
           this.emit({ type: "usage", seconds: event.usage.seconds });
           break;
+        case "error":
         case "gateway.error":
         case "transport.failed":
-        case "error":
           this.fail("Сервис прервал звонок. Попробуйте ещё раз.");
-          break;
+          return;
       }
     }
     this.delegation?.abort();

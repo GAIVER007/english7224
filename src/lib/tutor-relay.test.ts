@@ -198,11 +198,60 @@ it.each(["unavailable", "empty"])(
     }
     const { run, peer } = start();
     await run;
-    expect(send).toHaveBeenCalledWith({
-      type: "session.instructions.append",
-      delegation_id: "turn-1",
-      content: expect.stringContaining("Continue the conversation"),
-    });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "session.instructions.append",
+        delegation_id: "turn-1",
+        content: expect.stringContaining("Continue the conversation"),
+      }),
+    );
     expect(peer.close).toHaveBeenCalledWith(1000);
+  },
+);
+
+it.each(["top-level", "nested", "unrelated", "fatal"] as const)(
+  "only keeps the call open for a rejected coaching command (%s)",
+  async (kind) => {
+    let capture!: (command: { event_id?: string }) => void;
+    const sent = new Promise<{ event_id?: string }>((resolve) => {
+      capture = resolve;
+    });
+    vi.mocked(generateResponse).mockResolvedValue({ output: [] } as unknown as Awaited<
+      ReturnType<typeof generateResponse>
+    >);
+    vi.mocked(connectLive).mockResolvedValue({
+      created: { session: { id: "session" }, transport: { sdp: "answer" } },
+      send: vi.fn(async (command) => capture(command)),
+      async *[Symbol.asyncIterator]() {
+        yield { type: "session.delegation.created", delegation: { id: "turn" } };
+        const { event_id } = await sent;
+        const id = kind === "unrelated" ? "other-command" : event_id;
+        yield {
+          type: "error",
+          ...(kind !== "nested" && { client_event_id: id }),
+          error: {
+            type: kind === "fatal" ? "server_error" : "invalid_request_error",
+            ...(kind === "nested" && { client_event_id: id }),
+          },
+        };
+        yield { type: "session.output_transcript.delta", delta: "Where is the station?" };
+      },
+    } as unknown as Awaited<ReturnType<typeof connectLive>>);
+    const { peer, send, run } = start({ title: "Travelling", text: "Ask for a ticket." });
+    await run;
+    expect((await sent).event_id).toEqual(expect.any(String));
+    const events = send.mock.calls.map(([raw]) => JSON.parse(raw));
+    if (kind === "unrelated" || kind === "fatal") {
+      expect(peer.close).toHaveBeenCalledWith(1011);
+      expect(events.at(-1)).toMatchObject({ type: "error" });
+    } else {
+      expect(peer.close).toHaveBeenCalledWith(1000);
+      expect(events.at(-1)).toEqual({
+        type: "caption",
+        who: "Mira",
+        delta: "Where is the station?",
+      });
+    }
+    expect(connectLive).toHaveBeenCalledTimes(1);
   },
 );
